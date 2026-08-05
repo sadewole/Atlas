@@ -24,6 +24,7 @@ This folder is your personal learning resource. Unlike the `docs/` folder (which
 | 09 | [Testing Strategy](./09-testing-strategy.md) | Unit, integration, contract, E2E, financial correctness testing |
 | 10 | [Production Operations](./10-production-operations.md) | Disaster recovery, backups, monitoring, incident response |
 | 11 | [Monorepo Setup](./11-monorepo.md) | Nx + pnpm, workspace structure, the `@atlas/*` import convention |
+| 12 | [Shared Packages](./12-shared-packages.md) | Money, errors, config, logger, events, testing implementations |
 
 ## Architecture Specs (Reference)
 

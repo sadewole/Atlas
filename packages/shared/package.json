@@ -22,6 +22,7 @@
     "name": "shared"
   },
   "dependencies": {
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "uuid": "^14.0.1"
   }
 }

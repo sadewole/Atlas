@@ -9,7 +9,17 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "references": [],
+  "references": [
+    {
+      "path": "../shared/tsconfig.lib.json"
+    },
+    {
+      "path": "../events/tsconfig.lib.json"
+    },
+    {
+      "path": "../config/tsconfig.lib.json"
+    }
+  ],
   "exclude": [
     "vite.config.ts",
     "vite.config.mts",
