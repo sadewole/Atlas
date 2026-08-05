@@ -1,0 +1,12 @@
+From here, I would move away from individual business services and into platform engineering.
+
+The next major specifications should cover:
+
+Infrastructure & Cloud Architecture (GCP) — Cloud Run, GKE (where justified), VPC, Cloud SQL, Pub/Sub, Secret Manager, Cloud Armor, Cloud CDN, Cloud Storage, Terraform.
+Observability Platform — OpenTelemetry, Prometheus, Grafana, Cloud Monitoring, ClickHouse, OpenSearch, distributed tracing, SLOs and alerting.
+Data Platform — CDC with Debezium, BigQuery, ClickHouse, OpenSearch, Dataflow, analytics pipelines, data governance.
+CI/CD & Release Engineering — GitHub Actions, Cloud Build, Artifact Registry, progressive delivery, canary deployments, rollback strategies.
+Disaster Recovery & Business Continuity — backups, cross-region failover, RPO/RTO targets, ledger recovery, chaos testing.
+Developer Platform — local development, monorepo tooling, API documentation, SDK generation, testing strategy, developer portal.
+
+These platform specifications are what elevate Atlas from "a collection of microservices" to a complete, production-ready financial infrastructure platform comparable in architecture to systems built by modern fintech companies.
