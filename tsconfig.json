@@ -1,0 +1,38 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/shared"
+    },
+    {
+      "path": "./packages/config"
+    },
+    {
+      "path": "./packages/logger"
+    },
+    {
+      "path": "./packages/events"
+    },
+    {
+      "path": "./packages/database"
+    },
+    {
+      "path": "./packages/auth"
+    },
+    {
+      "path": "./packages/testing"
+    },
+    {
+      "path": "./packages/protobuf"
+    },
+    {
+      "path": "./packages/grpc"
+    },
+    {
+      "path": "./apps/gateway"
+    }
+  ],
+  "compilerOptions": {}
+}

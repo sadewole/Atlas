@@ -1,3 +1,29 @@
+<!-- nx configuration start-->
+<!-- Leave the start & end comments to automatically receive updates. -->
+
+# General Guidelines for working with Nx
+
+- For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
+- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
+- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
+- You have access to the Nx MCP server and its tools, use them to help the user
+- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
+- NEVER guess CLI flags - always check nx_docs or `--help` first when unsure
+
+## Scaffolding & Generators
+
+- For scaffolding tasks (creating apps, libs, project structure, setup), ALWAYS invoke the `nx-generate` skill FIRST before exploring or calling MCP tools
+
+## When to use nx_docs
+
+- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
+- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
+- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
+
+<!-- nx configuration end-->
+
+---
+
 # AGENTS.md — Atlas Financial Infrastructure Platform
 
 ## Project Overview
@@ -12,7 +38,7 @@ The platform enables businesses to build wallets, accounts, transfers, payments,
 
 ## Quick Context for Any Agent
 
-This project has completed ~55-60% of its design phase. We have NOT started coding yet. All work so far is architecture specifications and design documents.
+This project has completed ~55-60% of its design phase. We are now in **Phase 0: Project Foundation** — setting up the monorepo, local dev environment, CI/CD, and shared libraries. No business logic has been written yet.
 
 ### What's Done (Design)
 - Product vision, scope, non-functional requirements
@@ -29,10 +55,11 @@ This project has completed ~55-60% of its design phase. We have NOT started codi
 - Security Platform Specification
 - Developer Platform Specification
 - Event Catalog
-- Any code or implementation
+- Monorepo is in progress (Phase 0)
+- Any business logic code
 
 ### Current State
-We are ready to start Phase 0 (Project Foundation) after any remaining specifications the user wants to complete. Phase 0 involves monorepo setup, Docker Compose local dev environment, CI/CD pipeline, and shared libraries.
+Phase 0 (Foundation) is underway. The Nx monorepo has been initialized. Remaining Phase 0 work: shared libraries, NestJS service template, Docker Compose local environment, CI/CD pipeline, Terraform bootstrap, observability.
 
 ---
 
@@ -104,6 +131,7 @@ We are ready to start Phase 0 (Project Foundation) after any remaining specifica
 |----------|-----------|
 | Language | TypeScript |
 | Framework | NestJS + Fastify |
+| Monorepo | Nx + pnpm workspaces |
 | Primary DB | PostgreSQL (Cloud SQL) |
 | Cache | Redis (Memorystore) |
 | Messaging | Google Pub/Sub |
@@ -118,7 +146,7 @@ We are ready to start Phase 0 (Project Foundation) after any remaining specifica
 
 ---
 
-## File Structure (Planned Monorepo)
+## Monorepo Structure
 
 ```
 atlas/
@@ -151,13 +179,18 @@ atlas/
 │   ├── kubernetes/
 │   ├── docker/
 │   └── helm/
-├── docs/          # Architecture specifications (current phase)
+├── docs/          # Architecture specifications
 ├── _learn/        # Educational documentation for the user
 ├── tools/
 │   ├── scripts/
 │   └── generators/
+├── nx.json        # Nx workspace config
+├── package.json   # Root package.json
+├── tsconfig.base.json  # Shared TypeScript config
 └── AGENTS.md      # This file
 ```
+
+**Convention:** Every app and package has its own `package.json` (Nx + pnpm workspace). Shared code lives in `packages/` under the `@atlas/*` scope.
 
 ---
 
@@ -254,10 +287,11 @@ atlas/
 4. Engineering standards are in `docs/tier1/` and `docs/tier2/`
 
 ### Before writing any code:
-1. **Discuss tradeoffs** with the user first — this is a learning project
+1. **Discuss tradeoffs with the user first** — this is a learning project
 2. Reference existing architecture specs for that service
 3. Follow the conventions in this file
 4. Use NestJS patterns (modules, dependency injection, CQRS where specified)
+5. Run Nx commands through `pnpm nx` (never raw tools)
 
 ### Code style:
 - TypeScript strict mode

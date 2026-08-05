@@ -1,0 +1,75 @@
+{
+  "name": "@atlas/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "nx": "nx",
+    "dev": "nx run-many -t serve --parallel=4",
+    "build": "nx run-many -t build --parallel=4",
+    "test": "nx run-many -t test --parallel=4",
+    "lint": "nx run-many -t lint --parallel=4",
+    "affected": "nx affected -t build --parallel=4",
+    "affected:test": "nx affected -t test --parallel=4",
+    "graph": "nx graph",
+    "format": "nx format:write"
+  },
+  "private": true,
+  "devDependencies": {
+    "@eslint/js": "^9.8.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
+    "@nx/eslint": "23.1.0",
+    "@nx/eslint-plugin": "23.1.0",
+    "@nx/jest": "23.1.0",
+    "@nx/js": "23.1.0",
+    "@nx/nest": "23.1.0",
+    "@nx/node": "23.1.0",
+    "@nx/vitest": "23.1.0",
+    "@nx/web": "23.1.0",
+    "@nx/webpack": "23.1.0",
+    "@swc-node/register": "1.11.1",
+    "@swc/core": "1.15.8",
+    "@swc/helpers": "0.5.18",
+    "@swc/jest": "~0.2.38",
+    "@types/jest": "~30.0.0",
+    "@types/node": "^24.0.0",
+    "@vitest/coverage-v8": "~4.1.0",
+    "eslint": "^9.8.0",
+    "eslint-config-prettier": "^10.0.0",
+    "jest": "~30.3.0",
+    "jest-environment-node": "~30.3.0",
+    "jest-util": "~30.3.0",
+    "nx": "23.1.0",
+    "prettier": "^3.8.1",
+    "ts-jest": "^29.4.7",
+    "ts-node": "10.9.1",
+    "tslib": "^2.3.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.58.0",
+    "verdaccio": "^6.3.2",
+    "vite": "^8.0.0",
+    "vitest": "~4.1.0",
+    "webpack": "^5.101.3",
+    "webpack-cli": "^7.0.0",
+    "webpack-dev-server": "^5.2.1"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0"
+  },
+  "nx": {
+    "includedScripts": [],
+    "targets": {
+      "local-registry": {
+        "executor": "@nx/js:verdaccio",
+        "options": {
+          "port": 4873,
+          "config": ".verdaccio/config.yml",
+          "storage": "tmp/local-registry/storage"
+        }
+      }
+    }
+  }
+}
