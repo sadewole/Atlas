@@ -58,9 +58,10 @@ describe('loadConfig', () => {
     try {
       loadConfig(schema, {});
     } catch (err) {
-      expect(err).toBeInstanceOf(ConfigValidationError);
-      expect(err.message).toContain('Invalid environment configuration');
-      expect(err.message).toContain('DATABASE_URL');
+      const error = err as ConfigValidationError;
+      expect(error).toBeInstanceOf(ConfigValidationError);
+      expect(error.message).toContain('Invalid environment configuration');
+      expect(error.message).toContain('DATABASE_URL');
     }
   });
 
@@ -69,8 +70,9 @@ describe('loadConfig', () => {
     try {
       loadConfig(schema, { NODE_ENV: 'dev', DATABASE_URL: '' });
     } catch (err) {
-      expect(err.message).toContain('DATABASE_URL');
-      expect(err.message).toContain('NODE_ENV');
+      const error = err as ConfigValidationError;
+      expect(error.message).toContain('DATABASE_URL');
+      expect(error.message).toContain('NODE_ENV');
     }
   });
 

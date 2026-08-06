@@ -39,7 +39,7 @@ describe('createCursorPage', () => {
   });
 
   it('handles an empty page', () => {
-    const page = createCursorPage([], false, (i) => i.id);
+    const page = createCursorPage<{ id: string }>([], false, (i) => i.id);
     expect(page.data).toEqual([]);
     expect(page.page.hasMore).toBe(false);
   });

@@ -31,7 +31,9 @@ describe('InMemoryEventBus', () => {
     const received: string[] = [];
     await bus.subscribe({
       topic: 'transfer.events',
-      handle: async (e) => received.push(e.eventType),
+      handle: async (e) => {
+        received.push(e.eventType);
+      },
     });
     await bus.publish(
       createEnvelope({
@@ -50,7 +52,9 @@ describe('InMemoryEventBus', () => {
     await bus.subscribe({
       topic: 'transfer.events',
       eventTypes: ['TransferFailed'],
-      handle: async (e) => received.push(e.eventType),
+      handle: async (e) => {
+        received.push(e.eventType);
+      },
     });
     await bus.publish(
       createEnvelope({

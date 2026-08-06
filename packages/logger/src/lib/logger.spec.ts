@@ -62,6 +62,7 @@ describe('createLogger', () => {
     const { logger, lines } = captureLogger({ serviceName: 'test' });
     logger.info({ req: { headers: { authorization: 'Bearer secret' } } }, 'x');
     const line = lines()[0];
-    expect(line.req.headers.authorization).toBe('[Redacted]');
+    const req = line.req as { headers: { authorization: string } };
+    expect(req.headers.authorization).toBe('[Redacted]');
   });
 });
