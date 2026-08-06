@@ -107,11 +107,11 @@ One of the most important.
 
 ---
 
-## 5. Security Platform ⭐⭐⭐⭐☆
+## 5. Security Platform ⭐⭐⭐⭐⭐ ✅
 
-We've covered IAM, but not platform security.
+We've covered IAM, and now platform security too.
 
-Things like
+Covered in `docs/tier2/security-specifications.md` (V1.0):
 
 - Threat modeling
 - WAF

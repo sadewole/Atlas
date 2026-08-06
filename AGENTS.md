@@ -38,7 +38,7 @@ The platform enables businesses to build wallets, accounts, transfers, payments,
 
 ## Quick Context for Any Agent
 
-This project has completed ~55-60% of its design phase. We are now in **Phase 0: Project Foundation** — setting up the monorepo, local dev environment, CI/CD, and shared libraries. No business logic has been written yet.
+The design phase is complete (all specs written, including Security Platform). We are in **Phase 0: Project Foundation** — monorepo, local dev environment, CI/CD, and shared libraries. No business logic has been written yet.
 
 ### What's Done (Design)
 - Product vision, scope, non-functional requirements
@@ -48,18 +48,18 @@ This project has completed ~55-60% of its design phase. We are now in **Phase 0:
 - Data platform (CDC, ClickHouse, OpenSearch, BigQuery)
 - CI/CD & Release Engineering
 - Disaster Recovery & Business Continuity
+- Security Platform (encryption, secrets, audit, compliance)
 - API Standards & Engineering Guidelines
 - Testing Strategy & Quality Engineering
 
 ### What's NOT Done Yet
-- Security Platform Specification
 - Developer Platform Specification
 - Event Catalog
 - Monorepo is in progress (Phase 0)
 - Any business logic code
 
 ### Current State
-Phase 0 (Foundation) is underway. The Nx monorepo has been initialized. Remaining Phase 0 work: shared libraries, NestJS service template, Docker Compose local environment, CI/CD pipeline, Terraform bootstrap, observability.
+Phase 0 (Foundation) is underway. Monorepo, shared libraries, and Docker Compose local infra are done. Remaining Phase 0 work: `@atlas/database` (Drizzle/Postgres), NestJS service template, CI/CD pipeline, Terraform bootstrap, observability.
 
 ---
 

@@ -1,4 +1,5 @@
 import { ConfigModule } from '@atlas/config';
+import { DatabaseModule, widgets } from '@atlas/database';
 import { AtlasLoggerModule } from '@atlas/logger';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
@@ -14,6 +15,7 @@ import { gatewayConfigSchema } from '../config/gateway-config';
       level: 'info',
       pretty: process.env.NODE_ENV !== 'production',
     }),
+    DatabaseModule.forRoot({ schema: { widgets } }),
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

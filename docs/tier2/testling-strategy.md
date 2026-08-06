@@ -684,15 +684,15 @@ At this point, we've completed nearly all of what I'd consider the **core engine
 
 From here, we transition into documents that make Atlas feel like an engineering organization at scale rather than just a backend system.
 
-## My recommendation for the next document
+## The next document (now complete)
 
-I would **not** jump to the Developer Platform next.
+I did **not** jump to the Developer Platform next.
 
-Instead, I'd write the **Security Platform Specification**.
+Instead, I wrote the **Security Platform Specification** — now complete in `docs/tier2/security-specifications.md`.
 
-Why?
+Why security first?
 
-Because security touches every service we've designed:
+Because it touches every service we've designed:
 
 - API authentication and authorization
 - Key management

@@ -57,14 +57,11 @@ We've essentially written the equivalent of an architecture handbook.
 
 Here's what's remaining.
 
-## 1. Security Platform
+## 1. ~~Security Platform~~ ✅ COMPLETE
 
-This is the only one I'd strongly recommend completing before we write production code.
+The Security Platform Specification was the one document I recommended completing before writing production code, to avoid making dozens of security decisions ad hoc.
 
-Without it, you'll make dozens of security decisions ad hoc.
-
-Estimated effort:
-**1 document**
+**Done** — see `docs/tier2/security-specifications.md` (V1.0). It is now the reference for encryption, secrets, audit, compliance, and service-to-service security as we implement.
 
 ---
 
