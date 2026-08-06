@@ -70,6 +70,28 @@ The gateway serves:
 - `http://localhost:3000/api/ready` — readiness
 - `http://localhost:3000/api/live` — liveness
 
+## Local Infrastructure (Docker Compose)
+
+Start the local infrastructure (PostgreSQL, Redis, Pub/Sub emulator, MailHog, Jaeger, OpenTelemetry Collector):
+
+```bash
+pnpm infra:up       # start in the background
+pnpm infra:ps       # container status
+pnpm infra:logs     # follow logs
+pnpm infra:down     # stop
+pnpm infra:reset    # stop and wipe data volumes
+```
+
+Useful URLs after `pnpm infra:up`:
+
+| Service | URL |
+|---------|-----|
+| MailHog UI | http://localhost:8025 |
+| Jaeger UI | http://localhost:16686 |
+| Pub/Sub emulator | http://localhost:8085 |
+
+Services run on the host (`pnpm dev`) and connect to these via the values in `.env` (defaults in `.env.example`).
+
 ## Adding a Service or Library
 
 ```bash

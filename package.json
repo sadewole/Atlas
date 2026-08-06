@@ -10,6 +10,11 @@
     "lint": "nx run-many -t lint --parallel=4",
     "affected": "nx affected -t build --parallel=4",
     "affected:test": "nx affected -t test --parallel=4",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml --env-file .env up -d",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml --env-file .env down",
+    "infra:reset": "docker compose -f infra/docker/docker-compose.yml --env-file .env down -v",
+    "infra:ps": "docker compose -f infra/docker/docker-compose.yml --env-file .env ps",
+    "infra:logs": "docker compose -f infra/docker/docker-compose.yml --env-file .env logs -f --tail=50",
     "graph": "nx graph",
     "format": "nx format:write"
   },

@@ -1,0 +1,102 @@
+# Atlas local development infrastructure.
+#
+# Run from the repo root:
+#   pnpm infra:up      # start everything in the background
+#   pnpm infra:ps      # status
+#   pnpm infra:logs    # follow logs
+#   pnpm infra:down    # stop
+#   pnpm infra:reset   # stop and wipe data volumes
+#
+# Applications run on the host (pnpm dev) and reach these services
+# via localhost using the values in .env.
+
+name: atlas
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: atlas-postgres
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-atlas} -d ${POSTGRES_DB:-atlas}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: atlas-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+    container_name: atlas-pubsub
+    restart: unless-stopped
+    environment:
+      PUBSUB_PROJECT_ID: ${PUBSUB_PROJECT_ID:-atlas-dev}
+    command: >
+      bash -c "
+        gcloud beta emulators pubsub start
+          --project=${PUBSUB_PROJECT_ID:-atlas-dev}
+          --host-port=0.0.0.0:8085
+          --data-dir=/data
+      "
+    ports:
+      - "8085:8085"
+    volumes:
+      - pubsub_data:/data
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: atlas-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI (http://localhost:8025)
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.65.0
+    container_name: atlas-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686" # Web UI (http://localhost:16686)
+      # OTLP (4317 gRPC / 4318 HTTP) is NOT published to the host —
+      # traces flow through the otel-collector, which owns those ports.
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.117.0
+    container_name: atlas-otel-collector
+    restart: unless-stopped
+    depends_on:
+      - jaeger
+    command:
+      - --config=/etc/otelcol-contrib/config.yaml
+    volumes:
+      - ./otel-collector-config.yml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP — matches OTEL_EXPORTER_OTLP_ENDPOINT in .env
+
+volumes:
+  postgres_data:
+  redis_data:
+  pubsub_data:
