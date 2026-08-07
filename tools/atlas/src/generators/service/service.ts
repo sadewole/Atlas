@@ -73,8 +73,6 @@ export async function serviceGenerator(tree: Tree, rawOptions: ServiceGeneratorS
     json.type = 'module';
     delete json.dependencies['@nestjs/platform-express'];
     json.dependencies['@nestjs/platform-fastify'] = '^11.0.0';
-    json.dependencies['@fastify/static'] = '^8.0.0';
-    json.dependencies['@fastify/view'] = '^11.0.0';
     json.dependencies['nestjs-pino'] = '^4.6.1';
     json.dependencies['pino'] = '^10.3.1';
     json.dependencies['zod'] = '^4.4.3';

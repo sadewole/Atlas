@@ -10,31 +10,71 @@ permissions:
   actions: read
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # pnpm store cache keyed by lockfile so installs are fast and reproducible
+  PNPM_CACHE_FOLDER: ~/.pnpm-store
+
 jobs:
-  main:
+  verify:
+    name: Verify (typecheck, lint, test, build)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
-          filter: tree:0
           fetch-depth: 0
 
-      # This enables task distribution via Nx Cloud
-      # Run this command as early as possible, before dependencies are installed
-      # Learn more at https://nx.dev/docs/reference/nx-cloud-cli#npx-nxcloud-startcirun
-      - run: npx nx start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="e2e"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
 
-      # Cache node_modules
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: 'npm'
+          cache: 'pnpm'
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      # Prepend any command with "nx record --" to record its logs to Nx Cloud
-      - run: npx nx record -- npx nx format:check --base="remotes/origin/main"
-      - run: npx nx run-many -t lint test build typecheck e2e
-      # Nx Cloud recommends fixes for failures to help you get CI green faster. Learn more: https://nx.dev/docs/features/ci-features/self-healing-ci
-      - run: npx nx fix-ci
-        if: always()
+      # Compute the base SHA so `nx affected` only runs tasks for changed projects.
+      - uses: nrwl/nx-set-shas@v4
+
+      # Fail fast: format check first, then the core quality gates.
+      # `nx affected` only runs tasks for projects changed in this PR/commit.
+      # Integration tests use Testcontainers (Docker) — available on ubuntu-latest.
+      - run: pnpm exec nx format:check
+      - run: pnpm exec nx affected -t typecheck
+      - run: pnpm exec nx affected -t lint
+      - run: pnpm exec nx affected -t test
+      - run: pnpm exec nx affected -t build
+
+  security:
+    name: Security scan (deps + secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      # Dependency vulnerabilities
+      - name: Audit production dependencies
+        run: pnpm audit --prod
+
+      # Secret scanning — fail if any high-confidence secret is committed
+      - name: Scan for leaked secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

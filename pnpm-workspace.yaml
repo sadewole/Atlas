@@ -1,3 +1,14 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# Force patched versions of transitive deps with known vulnerabilities.
+# - find-my-way <9.7.0 is vulnerable to a DDoS (GHSA-c96f-x56v-gq3h); fastify
+#   hasn't bumped its range, so we pin it here.
+# - @fastify/static / @fastify/view are optional peers of @nestjs/platform-fastify
+#   that pnpm auto-installs. We never import them; pin to the latest patched
+#   majors to keep the glob/minimatch/brace-expansion chain clean.
+overrides:
+  find-my-way: 9.7.0
+  '@fastify/static': 9.3.0
+  '@fastify/view': 12.0.0

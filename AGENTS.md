@@ -55,13 +55,12 @@ The design phase is complete (all specs written, including Security Platform). P
 ### What's NOT Done Yet
 - Developer Platform Specification
 - Event Catalog
-- CI/CD pipeline (GitHub Actions)
 - Terraform bootstrap
 - Observability wiring into services
 - IAM service
 
 ### Current State
-Phase 0 (Foundation) is complete: Nx monorepo, shared packages (`shared`, `config`, `logger`, `events`, `testing`, `database`), Docker Compose local infra, and the gateway. The Ledger Service (`apps/ledger-service`) implements double-entry accounting — journal posting, balance projections, and financial correctness tests (14 tests).
+Phase 0 (Foundation) is complete: Nx monorepo, shared packages (`shared`, `config`, `logger`, `events`, `testing`, `database`), Docker Compose local infra, the gateway, and a GitHub Actions CI pipeline (typecheck/lint/test/build via `nx affected` + dependency/secret scanning). The Ledger Service (`apps/ledger-service`) implements double-entry accounting — journal posting, balance projections, and financial correctness tests (14 tests).
 
 All apps are ESM (`"type": "module"`) and build with `tsc` (not webpack). A local Nx plugin (`tools/atlas`, generator `@atlas/atlas:service`) scaffolds new services with all conventions baked in. **When scaffolding a new service, always use the generator** (`pnpm nx g @atlas/atlas:service <name> --port=<port>`) — do not copy-paste an existing app.
 
