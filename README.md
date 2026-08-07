@@ -65,6 +65,7 @@ pnpm nx run gateway:build    # production build
 ```
 
 The gateway serves:
+
 - `http://localhost:3000/api` — root
 - `http://localhost:3000/api/health` — health check
 - `http://localhost:3000/api/ready` — readiness
@@ -84,11 +85,11 @@ pnpm infra:reset    # stop and wipe data volumes
 
 Useful URLs after `pnpm infra:up`:
 
-| Service | URL |
-|---------|-----|
-| MailHog UI | http://localhost:8025 |
-| Jaeger UI | http://localhost:16686 |
-| Pub/Sub emulator | http://localhost:8085 |
+| Service          | URL                    |
+| ---------------- | ---------------------- |
+| MailHog UI       | http://localhost:8025  |
+| Jaeger UI        | http://localhost:16686 |
+| Pub/Sub emulator | http://localhost:8085  |
 
 Services run on the host (`pnpm dev`) and connect to these via the values in `.env` (defaults in `.env.example`).
 
@@ -101,6 +102,18 @@ pnpm nx g @nx/nest:app --name=ledger-service --directory=apps/ledger-service
 # New shared library
 pnpm nx g @nx/js:library --name=events --directory=packages/events \
   --importPath=@atlas/events --publishable --bundler=tsc --unitTestRunner=vitest
+```
+
+## Service generator (NEW)
+
+```bash
+# A local Nx plugin (tools/atlas/) with a service generator:
+
+# A full data-owning service (default)
+pnpm nx g @atlas/atlas:service transfer-service --port=3004
+
+# A stateless service (no database)
+pnpm nx g @atlas/atlas:service webhook-service --port=3008 --needsDatabase=false
 ```
 
 ## Documentation
