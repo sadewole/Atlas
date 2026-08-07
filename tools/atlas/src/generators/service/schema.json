@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "$id": "AtlasService",
+  "title": "Atlas NestJS Service",
+  "description": "Scaffold a production-ready Atlas service: Fastify, ConfigModule, LoggerModule, DatabaseModule, health endpoints, ESM, and tsc build.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Service name, e.g. 'identity-service'. Must end with '-service'.",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "What is the service name? (e.g. identity-service)"
+    },
+    "port": {
+      "type": "number",
+      "description": "Default port for the service.",
+      "x-prompt": "What port should the service listen on?",
+      "default": 3000
+    },
+    "needsDatabase": {
+      "type": "boolean",
+      "description": "Wire in DatabaseModule + Postgres config (false for pure stateless services like the gateway).",
+      "default": true
+    },
+    "tags": {
+      "type": "string",
+      "description": "Nx tags, e.g. 'scope:identity,type:app'."
+    }
+  },
+  "required": ["name"]
+}

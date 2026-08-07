@@ -2,10 +2,10 @@ import { ConfigModule } from '@atlas/config';
 import { DatabaseModule, widgets } from '@atlas/database';
 import { AtlasLoggerModule } from '@atlas/logger';
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { HealthController } from './health/health.controller';
-import { gatewayConfigSchema } from '../config/gateway-config';
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
+import { HealthController } from './health/health.controller.js';
+import { gatewayConfigSchema } from '../config/gateway-config.js';
 
 @Module({
   imports: [

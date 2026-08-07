@@ -1,0 +1,21 @@
+import { ConfigModule } from '@atlas/config';
+<% if (needsDatabase) { %>import { DatabaseModule } from '@atlas/database';
+<% } %>import { AtlasLoggerModule } from '@atlas/logger';
+import { Module } from '@nestjs/common';
+import { HealthController } from './health/health.controller.js';
+import { <%= camelName %>ConfigSchema } from '../config/<%= name %>-config.js';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ schema: <%= camelName %>ConfigSchema }),
+    AtlasLoggerModule.forRoot({
+      serviceName: '<%= name %>',
+      level: 'info',
+      pretty: process.env.NODE_ENV !== 'production',
+    }),
+    <% if (needsDatabase) { %>DatabaseModule.forRoot({ schema: {} }),
+    <% } %>
+  ],
+  controllers: [HealthController],
+})
+export class AppModule {}

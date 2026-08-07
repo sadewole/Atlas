@@ -21,5 +21,6 @@
   },
   "devDependencies": {
     "@nestjs/testing": "^11.0.0"
-  }
+  },
+  "type": "module"
 }

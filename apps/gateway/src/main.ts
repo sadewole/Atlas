@@ -5,8 +5,8 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Logger as PinoLogger } from 'nestjs-pino';
-import { AppModule } from './app/app.module';
-import { GatewayConfig } from './config/gateway-config';
+import { AppModule } from './app/app.module.js';
+import { GatewayConfig } from './config/gateway-config.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(

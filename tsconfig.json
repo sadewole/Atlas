@@ -32,6 +32,12 @@
     },
     {
       "path": "./apps/gateway"
+    },
+    {
+      "path": "./apps/ledger-service"
+    },
+    {
+      "path": "./tools/atlas"
     }
   ],
   "compilerOptions": {}

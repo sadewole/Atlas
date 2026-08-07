@@ -38,7 +38,7 @@ The platform enables businesses to build wallets, accounts, transfers, payments,
 
 ## Quick Context for Any Agent
 
-The design phase is complete (all specs written, including Security Platform). We are in **Phase 0: Project Foundation** — monorepo, local dev environment, CI/CD, and shared libraries. No business logic has been written yet.
+The design phase is complete (all specs written, including Security Platform). Phase 0 (Foundation) is done, and Phase 2 (Ledger) has started. Business logic now exists: the Ledger Service implements the double-entry posting pipeline.
 
 ### What's Done (Design)
 - Product vision, scope, non-functional requirements
@@ -55,11 +55,15 @@ The design phase is complete (all specs written, including Security Platform). W
 ### What's NOT Done Yet
 - Developer Platform Specification
 - Event Catalog
-- Monorepo is in progress (Phase 0)
-- Any business logic code
+- CI/CD pipeline (GitHub Actions)
+- Terraform bootstrap
+- Observability wiring into services
+- IAM service
 
 ### Current State
-Phase 0 (Foundation) is underway. Monorepo, shared libraries, and Docker Compose local infra are done. Remaining Phase 0 work: `@atlas/database` (Drizzle/Postgres), NestJS service template, CI/CD pipeline, Terraform bootstrap, observability.
+Phase 0 (Foundation) is complete: Nx monorepo, shared packages (`shared`, `config`, `logger`, `events`, `testing`, `database`), Docker Compose local infra, and the gateway. The Ledger Service (`apps/ledger-service`) implements double-entry accounting — journal posting, balance projections, and financial correctness tests (14 tests).
+
+All apps are ESM (`"type": "module"`) and build with `tsc` (not webpack). A local Nx plugin (`tools/atlas`, generator `@atlas/atlas:service`) scaffolds new services with all conventions baked in. **When scaffolding a new service, always use the generator** (`pnpm nx g @atlas/atlas:service <name> --port=<port>`) — do not copy-paste an existing app.
 
 ---
 

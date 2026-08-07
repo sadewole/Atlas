@@ -25,6 +25,8 @@ This folder is your personal learning resource. Unlike the `docs/` folder (which
 | 10 | [Production Operations](./10-production-operations.md) | Disaster recovery, backups, monitoring, incident response |
 | 11 | [Monorepo Setup](./11-monorepo.md) | Nx + pnpm, workspace structure, the `@atlas/*` import convention |
 | 12 | [Shared Packages](./12-shared-packages.md) | Money, errors, config, logger, events, testing implementations |
+| 13 | [Ledger Service](./13-ledger-service.md) | Double-entry journal, posting pipeline, balance projection, correctness tests |
+| 14 | [Service Generator](./14-service-generator.md) | Local Nx plugin that scaffolds a full Atlas service in one command |
 
 ## Architecture Specs (Reference)
 

@@ -1,0 +1,15 @@
+import { baseConfigSchema } from '@atlas/config';
+import { postgresConfigSchema } from '@atlas/database';
+import { z } from 'zod';
+
+/**
+ * <%= pascalName %> configuration. Extends the base schema with the service
+ * port and Postgres settings (from @atlas/database).
+ */
+export const <%= camelName %>ConfigSchema = baseConfigSchema
+  .extend({
+    SERVICE_PORT: z.coerce.number().int().positive().default(<%= port %>),
+  })
+  <% if (needsDatabase) { %>.merge(postgresConfigSchema)<% } %>;
+
+export type <%= pascalName %>Config = z.infer<typeof <%= camelName %>ConfigSchema>;

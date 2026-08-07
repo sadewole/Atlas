@@ -3,27 +3,22 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/gateway/src",
   "projectType": "application",
-  "tags": ["scope:gateway", "type:app"],
+  "tags": [
+    "scope:gateway",
+    "type:app"
+  ],
   "targets": {
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "webpack-cli build",
-        "env": {
-          "NODE_ENV": "production"
-        },
+        "command": "tsc --build tsconfig.app.json",
         "cwd": "apps/gateway"
-      },
-      "configurations": {
-        "development": {
-          "env": {
-            "NODE_ENV": "development"
-          }
-        }
       }
     },
     "prune-lockfile": {
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
       "outputs": [
@@ -35,34 +30,35 @@
       }
     },
     "copy-workspace-modules": {
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "cache": true,
-      "outputs": ["{workspaceRoot}/apps/gateway/dist/workspace_modules"],
+      "outputs": [
+        "{workspaceRoot}/apps/gateway/dist/workspace_modules"
+      ],
       "executor": "@nx/js:copy-workspace-modules",
       "options": {
         "buildTarget": "build"
       }
     },
     "prune": {
-      "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
+      "dependsOn": [
+        "prune-lockfile",
+        "copy-workspace-modules"
+      ],
       "executor": "nx:noop"
     },
     "serve": {
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "options": {
         "buildTarget": "gateway:build",
         "runBuildTargetDependencies": false
-      },
-      "configurations": {
-        "development": {
-          "buildTarget": "gateway:build:development"
-        },
-        "production": {
-          "buildTarget": "gateway:build:production"
-        }
       }
     },
     "test": {
