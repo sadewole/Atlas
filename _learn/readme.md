@@ -30,6 +30,7 @@ This folder is your personal learning resource. Unlike the `docs/` folder (which
 | 15 | [CI/CD Pipeline](./15-ci-cd.md) | GitHub Actions workflow, `nx affected`, dependency + secret scanning |
 | 16 | [Wallet Service](./16-wallet-service.md) | Wallet lifecycle, reservations, optimistic locking, the tx-rollback lesson |
 | 17 | [Financial Terms Glossary](./17-financial-terms-glossary.md) | Quick-reference: what journal, posting, debit, hold, projection, etc. mean |
+| 18 | [Transfer Service](./18-transfer-service.md) | The Saga: orchestrated reserve→ledger→capture, compensation, idempotency |
 
 ## Architecture Specs (Reference)
 

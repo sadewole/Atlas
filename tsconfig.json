@@ -41,6 +41,9 @@
     },
     {
       "path": "./apps/wallet-service"
+    },
+    {
+      "path": "./apps/transfer-service"
     }
   ],
   "compilerOptions": {}

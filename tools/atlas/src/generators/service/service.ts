@@ -139,7 +139,8 @@ export async function serviceGenerator(tree: Tree, rawOptions: ServiceGeneratorS
     if (jestConfig === null) throw new Error(`Missing ${jestConfigPath}`);
     const withMapper = jestConfig.replace(
       / {2}coverageDirectory: '[^']*',/,
-      `  coverageDirectory: 'test-output/jest/coverage',
+      () =>
+        `  coverageDirectory: 'test-output/jest/coverage',
   moduleNameMapper: {
     '^@atlas/(.*)$': '<rootDir>/../../packages/$1/src/index.ts',
   },
