@@ -4,6 +4,16 @@ import { GetBalanceUseCase } from '../application/get-balance.use-case.js';
 import { PostJournalUseCase } from '../application/post-journal.use-case.js';
 import { createAccountSchema, postJournalSchema } from './ledger.dto.js';
 
+/**
+ * The Ledger's public API. The ledger is the single source of financial truth.
+ *
+ *   POST /v1/ledger/accounts        add an account to the chart of accounts
+ *   POST /v1/ledger/journals        post a balanced journal (the core write)
+ *   GET  /v1/ledger/accounts/:id/balance   read an account's balance projection
+ *
+ * All money is in minor units (kobo/cents). A journal is balanced when
+ * debits == credits — the domain layer rejects unbalanced journals.
+ */
 @Controller('v1/ledger')
 export class LedgerController {
   constructor(
@@ -12,6 +22,7 @@ export class LedgerController {
     private readonly getBalanceUseCase: GetBalanceUseCase,
   ) {}
 
+  /** Add a new account (e.g. "Operational Costs") to the chart of accounts. */
   @Post('accounts')
   async createAccount(@Body() body: unknown) {
     const parsed = createAccountSchema.safeParse(body);
@@ -40,6 +51,11 @@ export class LedgerController {
     };
   }
 
+  /**
+   * THE core financial write: post a balanced journal. The body contains a
+   * `reference` (idempotency key) and `postings` (debit/credit lines). If
+   * debits != credits, or a referenced account doesn't exist, it's rejected.
+   */
   @Post('journals')
   async postJournal(@Body() body: unknown) {
     const parsed = postJournalSchema.safeParse(body);
@@ -59,6 +75,7 @@ export class LedgerController {
     return { data: result };
   }
 
+  /** Read an account's current balance (from the derived projection table). */
   @Get('accounts/:id/balance')
   async getBalance(@Param('id') accountId: string) {
     const result = await this.getBalanceUseCase.execute({ accountId });

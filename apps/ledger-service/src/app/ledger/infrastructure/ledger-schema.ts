@@ -6,43 +6,74 @@ import { bigint, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-
  *
  * Money columns are stored as minor-unit integers (kobo/cents) — never floats.
  * Using `bigint` in PostgreSQL guarantees 64-bit integer range.
+ *
+ * DOMAIN QUICK-REFERENCE:
+ *   account   — a "place money lives" in the chart of accounts (e.g. Platform
+ *               Cash, Customer Wallets). NOT a user or wallet.
+ *   journal   — one balanced accounting transaction (the "double" in
+ *               double-entry). Holds the postings together.
+ *   posting   — a single debit or credit line inside a journal.
+ *   balance_projection — a cached, derived account balance. NOT the source of
+ *               truth; the ledger (sum of postings) is.
  */
 
+/** Chart of accounts entries. Money lives in accounts, not users. */
 export const accounts = pgTable('accounts', {
   id: uuid('id').primaryKey().defaultRandom(),
+  /** Stable numeric code for hierarchy/reporting, e.g. "1110". */
   accountCode: varchar('account_code', { length: 20 }).notNull().unique(),
   name: text('name').notNull(),
+  /** asset | liability | equity | revenue | expense — determines debit/credit sign. */
   type: varchar('type', { length: 20 }).notNull(),
   currency: varchar('currency', { length: 3 }).notNull(),
+  /** active | closed. Closed accounts reject new postings. */
   status: varchar('status', { length: 20 }).notNull().default('active'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * One balanced accounting transaction. `debits == credits` always.
+ * A journal exists only because money moved somewhere — it's the audit record.
+ */
 export const journals = pgTable('journals', {
   id: uuid('id').primaryKey().defaultRandom(),
+  /** Client-supplied idempotency key — retrying the same reference returns the same journal. */
   reference: text('reference').notNull().unique(),
   description: text('description'),
   currency: varchar('currency', { length: 3 }).notNull(),
+  /** draft | posted | reversed. Only `posted` affects balances. */
   status: varchar('status', { length: 20 }).notNull().default('draft'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   postedAt: timestamp('posted_at', { withTimezone: true }),
 });
 
+/**
+ * The individual debit/credit lines of a journal. A journal typically has two
+ * (one debit, one credit) but may have many. Never edited once written.
+ */
 export const journalPostings = pgTable('journal_postings', {
   id: uuid('id').primaryKey().defaultRandom(),
   journalId: uuid('journal_id')
     .notNull()
     .references(() => journals.id),
+  /** Which account this line touches. */
   accountId: uuid('account_id')
     .notNull()
     .references(() => accounts.id),
+  /** debit | credit. Direction + account type decides whether balance goes up or down. */
   direction: varchar('direction', { length: 6 }).notNull(),
+  /** Minor-unit amount (kobo/cents). Always positive; the sign lives in `direction`. */
   amount: bigint('amount', { mode: 'number' }).notNull(),
   currency: varchar('currency', { length: 3 }).notNull(),
+  /** Position of this line within the journal — order matters for replay/audit. */
   sequenceNumber: bigint('sequence_number', { mode: 'number' }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Cached account balances. A read-model: rebuilt from postings, never written
+ * directly. Speeds up balance queries — the source of truth is the ledger.
+ */
 export const balanceProjection = pgTable('balance_projection', {
   accountId: uuid('account_id')
     .primaryKey()

@@ -29,6 +29,7 @@ This folder is your personal learning resource. Unlike the `docs/` folder (which
 | 14 | [Service Generator](./14-service-generator.md) | Local Nx plugin that scaffolds a full Atlas service in one command |
 | 15 | [CI/CD Pipeline](./15-ci-cd.md) | GitHub Actions workflow, `nx affected`, dependency + secret scanning |
 | 16 | [Wallet Service](./16-wallet-service.md) | Wallet lifecycle, reservations, optimistic locking, the tx-rollback lesson |
+| 17 | [Financial Terms Glossary](./17-financial-terms-glossary.md) | Quick-reference: what journal, posting, debit, hold, projection, etc. mean |
 
 ## Architecture Specs (Reference)
 

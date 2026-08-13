@@ -17,6 +17,20 @@ import {
   reserveFundsSchema,
 } from './wallet.dto.js';
 
+/**
+ * The Wallet's public API. A wallet is a business-rules facade over the
+ * ledger — balances here are projections, not the source of truth.
+ *
+ *   POST   /v1/wallets                              create a wallet
+ *   GET    /v1/wallets/:id                          read wallet + balances
+ *   POST   /v1/wallets/:id/reserve                  hold funds (no money moves)
+ *   POST   /v1/wallets/reservations/:id/capture     permanently debit reserved funds
+ *   POST   /v1/wallets/reservations/:id/release     return reserved funds to available
+ *   POST   /v1/wallets/reservations/:id/expire      auto-release a timed-out hold
+ *   POST   /v1/wallets/:id/status                   freeze/unfreeze/suspend/close
+ *
+ * Balance math: available = ledgerBalance − reservedBalance.
+ */
 @Controller('v1/wallets')
 export class WalletController {
   constructor(
@@ -37,6 +51,7 @@ export class WalletController {
     });
   }
 
+  /** Create a new wallet. Generates a human-readable wallet number. */
   @Post()
   async createWallet(@Body() body: unknown) {
     const parsed = createWalletSchema.safeParse(body);
@@ -59,6 +74,7 @@ export class WalletController {
     };
   }
 
+  /** Read a wallet and its three balances (ledger, reserved, available). */
   @Get(':id')
   async getWallet(@Param('id') walletId: string) {
     const { wallet } = await this.getWalletUseCase.execute({ walletId });
@@ -79,6 +95,7 @@ export class WalletController {
     };
   }
 
+  /** Hold `amount` out of the available balance. Money does NOT move yet. */
   @Post(':id/reserve')
   async reserve(@Param('id') walletId: string, @Body() body: unknown) {
     const parsed = reserveFundsSchema.safeParse(body);
@@ -100,6 +117,7 @@ export class WalletController {
     };
   }
 
+  /** Permanently debit the reserved funds (money actually moves now). */
   @Post('reservations/:id/capture')
   async capture(@Param('id') reservationId: string) {
     const { reservation } =
@@ -107,6 +125,7 @@ export class WalletController {
     return { data: { id: reservation.id, status: reservation.status } };
   }
 
+  /** Return the reserved funds to available (hold lifted, no money moved). */
   @Post('reservations/:id/release')
   async release(@Param('id') reservationId: string) {
     const { reservation } =
@@ -114,6 +133,7 @@ export class WalletController {
     return { data: { id: reservation.id, status: reservation.status } };
   }
 
+  /** Release a timed-out hold automatically (like release, for expiries). */
   @Post('reservations/:id/expire')
   async expire(@Param('id') reservationId: string) {
     const { reservation } =
@@ -121,6 +141,7 @@ export class WalletController {
     return { data: { id: reservation.id, status: reservation.status } };
   }
 
+  /** Freeze / unfreeze / suspend / close the wallet (state machine enforced). */
   @Post(':id/status')
   async changeStatus(@Param('id') walletId: string, @Body() body: unknown) {
     const parsed = changeStatusSchema.safeParse(body);
