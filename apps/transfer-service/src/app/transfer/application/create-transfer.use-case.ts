@@ -26,6 +26,9 @@ export interface CreateTransferResult {
   journalId?: string;
 }
 
+/** Reservations auto-expire after this long if compensation is unreachable. */
+const RESERVATION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
  * The orchestrated Saga for a transfer (TSS §Saga Pattern).
  *
@@ -102,6 +105,10 @@ export class CreateTransferUseCase {
           reference: `res-${current.reference}`,
           amount: current.amount,
           currency: current.currency,
+          // TTL: if compensation is ever unreachable (e.g. process crash before
+          // the catch block runs), the reservation auto-releases and funds
+          // return to available instead of being locked forever.
+          expiresAt: new Date(Date.now() + RESERVATION_TTL_MS).toISOString(),
         },
       );
       reservationId = reservation.reservationId;
@@ -144,8 +151,12 @@ export class CreateTransferUseCase {
   }
 
   /**
-   * Compensating action: if we reserved funds and a later step failed, release
-   * the reservation so the money returns to available. Then mark FAILED.
+   * Compensating action: release any reservation we created, then mark FAILED.
+   *
+   * The guard is `reservationId`, NOT the transfer's status. A reservation can
+   * exist even if the transfer never persisted the RESERVED transition (e.g.
+   * the DB write at line 108 fails after the wallet already locked the funds).
+   * Keying on status would leave those funds locked forever.
    */
   private async compensate(
     transfer: Transfer,
@@ -156,8 +167,8 @@ export class CreateTransferUseCase {
       `Compensating transfer ${transfer.reference}: ${String((cause as Error)?.message ?? cause)}`,
     );
 
-    // Only release if we actually got as far as reserving.
-    if (reservationId && ['RESERVED', 'POSTING', 'SETTLING'].includes(transfer.status)) {
+    // Release whenever we actually created a reservation.
+    if (reservationId) {
       try {
         await this.walletClient.release(reservationId);
       } catch (releaseErr) {

@@ -69,6 +69,11 @@ export class TransferRepository {
     toStatus: string,
     completedAt?: Date,
   ): Promise<void> {
+    // Test hook: simulate a failure mid-transition (e.g. DB down after the
+    // wallet reserve succeeded but before we persist RESERVED).
+    if (this.failTransitionTo === toStatus) {
+      throw new Error(`simulated failure transitioning to ${toStatus}`);
+    }
     await this.db
       .update(transfers)
       .set({
@@ -78,6 +83,9 @@ export class TransferRepository {
       .where(eq(transfers.id, id));
     await this.recordStatus(id, toStatus, fromStatus);
   }
+
+  /** Test-only: when set, updateStatus throws for this target status. */
+  failTransitionTo: string | undefined = undefined;
 
   private async recordStatus(
     transferId: string,

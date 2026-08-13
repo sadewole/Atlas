@@ -36,7 +36,10 @@ class FakeWalletClient extends WalletClient {
     super('http://fake-wallet');
   }
 
-  override async reserve(walletId: string, input: { reference: string; amount: number; currency: string }) {
+  override async reserve(
+    walletId: string,
+    input: { reference: string; amount: number; currency: string; expiresAt?: string },
+  ): Promise<{ reservationId: string; status: string }> {
     if (this.failReserve) throw new Error('reserve failed');
     const available = this.balances.get(walletId) ?? 0;
     if (input.amount > available) throw new Error('Insufficient available balance');
@@ -193,5 +196,23 @@ describe('CreateTransferUseCase — Saga', () => {
     expect(stored?.status).toBe('FAILED');
     expect(fakeWallet.balances.get(cmd.sourceWalletId)).toBe(100000);
     fakeWallet.failCapture = false;
+  });
+
+  it('releases the reservation when persisting RESERVED fails after the wallet reserved', async () => {
+    // This is the exact race: the wallet has locked the funds, but the
+    // transfer DB fails to persist the RESERVED transition. Compensation must
+    // release the reservation even though the transfer never reached RESERVED.
+    const cmd = command();
+    fakeWallet.balances.set(cmd.sourceWalletId, 100000);
+    repo.failTransitionTo = 'RESERVED';
+
+    await expect(useCase.execute(cmd)).rejects.toThrow();
+
+    const stored = await repo.findByReference(cmd.reference);
+    expect(stored?.status).toBe('FAILED');
+    // Reservation was released despite the transfer only ever reaching RESERVING.
+    expect(fakeWallet.balances.get(cmd.sourceWalletId)).toBe(100000);
+    expect(fakeLedger.journals).toHaveLength(0);
+    repo.failTransitionTo = undefined;
   });
 });

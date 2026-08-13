@@ -111,6 +111,40 @@ Every transfer carries an `idempotencyKey`. If the same key arrives again, the S
 
 4. **Generator bug** — the `.replace()` with `$1` in the replacement string silently corrupted the generated jest config. Fix: use a replacer **function** so `$` is literal.
 
+## The Subtle One: The RESERVED-Transition Race
+
+The sharpest bug you caught: **what if the wallet reserves the funds, but the transfer DB fails to persist the `RESERVED` transition?**
+
+```
+reserve() on wallet succeeds  → funds locked ✓
+transition → RESERVED fails   → transfer DB still says RESERVING
+catch runs, compensate() fires
+```
+
+**The old guard was wrong:**
+```typescript
+// BAD: only releases if the transfer reached RESERVED/POSTING/SETTLING
+if (reservationId && ['RESERVED', 'POSTING', 'SETTLING'].includes(transfer.status)) {
+```
+
+If the DB write at line 108 failed, `transfer.status` was still `RESERVING` — **not in the list** — so the reservation was never released. The funds stayed locked forever.
+
+**The fix:** the guard must key on the *reliable signal*, not a proxy:
+```typescript
+// GOOD: release whenever a reservation actually exists
+if (reservationId) {
+  await this.walletClient.release(reservationId);
+}
+```
+
+`reservationId` being set is the ground truth that the wallet locked funds. The transfer's *status* is just our attempt to record progress — it can lag behind reality.
+
+**The second layer (crash-safety):** if the process *crashes* (hard kill, not a thrown error), `compensate()` never runs at all. That's why reservations carry a **TTL** (`expiresAt`). Even if compensation is unreachable, the reservation auto-releases and funds return to available. Never let a hold be permanent.
+
+> **Lesson:** in a Saga, "did I persist my status" and "does the side effect exist" are different things. Compensate based on the side effect (the reservation id), not your bookkeeping. And always give side effects a safety-net expiry for the crash case.
+
+A regression test covers the exact race: reserve succeeds, `RESERVED` transition throws → reservation is still released and the transfer ends FAILED.
+
 ---
 
 ## How the Services Talk (and the gRPC path)
@@ -124,10 +158,10 @@ Each call lives in `wallet.client.ts` / `ledger.client.ts`. **When we move to gR
 
 ---
 
-## Testing — 15 tests
+## Testing — 16 tests
 
 - **Domain (7)**: state machine walks the happy path, rejects illegal transitions, terminal states, compensation transitions
-- **Saga integration (8)**: happy path (reserve→journal→capture + balance changes), idempotency (no duplicate journal), early-failure (reserve fails → FAILED, no journal), compensation (ledger fails → reservation released, balance restored), capture-fails compensation
+- **Saga integration (9)**: happy path (reserve→journal→capture + balance changes), idempotency (no duplicate journal), early-failure (reserve fails → FAILED, no journal), compensation (ledger fails → reservation released, balance restored), capture-fails compensation, and the **RESERVED-transition race** (wallet reserved, status write fails → reservation still released)
 
 The Saga tests use **fake Wallet/Ledger clients** that simulate the real services' behavior (including injecting failures to exercise compensation deterministically), against a **real Testcontainers Postgres** for the transfer data.
 

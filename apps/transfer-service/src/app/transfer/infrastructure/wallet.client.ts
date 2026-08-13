@@ -27,7 +27,12 @@ export class WalletClient {
   /** Reserve funds on a wallet. Returns the created reservation. */
   async reserve(
     walletId: string,
-    input: { reference: string; amount: number; currency: string },
+    input: {
+      reference: string;
+      amount: number;
+      currency: string;
+      expiresAt?: string;
+    },
   ): Promise<ReserveFundsResult> {
     let res: Response;
     try {
