@@ -28,6 +28,7 @@ This folder is your personal learning resource. Unlike the `docs/` folder (which
 | 13 | [Ledger Service](./13-ledger-service.md) | Double-entry journal, posting pipeline, balance projection, correctness tests |
 | 14 | [Service Generator](./14-service-generator.md) | Local Nx plugin that scaffolds a full Atlas service in one command |
 | 15 | [CI/CD Pipeline](./15-ci-cd.md) | GitHub Actions workflow, `nx affected`, dependency + secret scanning |
+| 16 | [Wallet Service](./16-wallet-service.md) | Wallet lifecycle, reservations, optimistic locking, the tx-rollback lesson |
 
 ## Architecture Specs (Reference)
 

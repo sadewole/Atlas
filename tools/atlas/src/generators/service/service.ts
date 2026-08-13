@@ -131,6 +131,23 @@ export async function serviceGenerator(tree: Tree, rawOptions: ServiceGeneratorS
   // 6. Remove the webpack config (no longer used).
   tree.delete(`${projectRoot}/webpack.config.js`);
 
+  // 6b. jest must resolve @atlas/* workspace packages to their TS source and
+  //     transform uuid (ESM-only), or specs fail to run in ESM workspaces.
+  const jestConfigPath = `${projectRoot}/jest.config.cts`;
+  if (tree.exists(jestConfigPath)) {
+    const jestConfig = tree.read(jestConfigPath, 'utf-8');
+    if (jestConfig === null) throw new Error(`Missing ${jestConfigPath}`);
+    const withMapper = jestConfig.replace(
+      / {2}coverageDirectory: '[^']*',/,
+      `  coverageDirectory: 'test-output/jest/coverage',
+  moduleNameMapper: {
+    '^@atlas/(.*)$': '<rootDir>/../../packages/$1/src/index.ts',
+  },
+  transformIgnorePatterns: ['node_modules/(?!.*uuid.*)'],`,
+    );
+    tree.write(jestConfigPath, withMapper);
+  }
+
   // 7. Nest scaffolds ESM-incompatible bare relative imports in the files it
   //    generates — add explicit `.js` extensions.
   const fixRelativeImports = [

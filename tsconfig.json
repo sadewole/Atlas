@@ -38,6 +38,9 @@
     },
     {
       "path": "./tools/atlas"
+    },
+    {
+      "path": "./apps/wallet-service"
     }
   ],
   "compilerOptions": {}
