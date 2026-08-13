@@ -2,6 +2,7 @@ import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres, { Sql } from 'postgres';
+import { createEnvelope } from '@atlas/events';
 import { Currency, newId } from '@atlas/shared';
 import { Wallet } from '../domain/wallet.js';
 import { walletSchema } from './wallet-schema.js';
@@ -9,6 +10,7 @@ import { WalletRepository } from './wallet-repository.js';
 import { CreateWalletUseCase } from '../application/create-wallet.use-case.js';
 import { ReserveFundsUseCase } from '../application/reserve-funds.use-case.js';
 import { ReservationActionUseCase } from '../application/reservation-action.use-case.js';
+import { JournalPostedConsumer } from '../application/journal-posted.consumer.js';
 
 /**
  * Financial correctness integration tests against real PostgreSQL
@@ -26,6 +28,7 @@ let repo: WalletRepository;
 let createWallet: CreateWalletUseCase;
 let reserveFunds: ReserveFundsUseCase;
 let reservationAction: ReservationActionUseCase;
+let consumer: JournalPostedConsumer;
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('postgres:16-alpine').start();
@@ -43,6 +46,7 @@ beforeAll(async () => {
   createWallet = new CreateWalletUseCase(repo);
   reserveFunds = new ReserveFundsUseCase(repo);
   reservationAction = new ReservationActionUseCase(repo);
+  consumer = new JournalPostedConsumer(repo);
 });
 
 afterAll(async () => {
@@ -114,7 +118,7 @@ describe('ReserveFundsUseCase — financial integrity', () => {
     expect(fresh?.reservedBalance).toBe(0);
   });
 
-  it('capture moves funds from reserved to a permanent debit', async () => {
+  it('capture clears the reservation; the ledger event debits the projection', async () => {
     const w = await activeWallet(100000);
     const { reservation } = await reserveFunds.execute({
       walletId: w.id,
@@ -125,9 +129,14 @@ describe('ReserveFundsUseCase — financial integrity', () => {
     await reservationAction.capture({ reservationId: reservation.id });
 
     const fresh = await repo.findWalletById(w.id);
-    expect(fresh?.ledgerBalance).toBe(60000);
+    // Capture only cleared the hold.
     expect(fresh?.reservedBalance).toBe(0);
-    expect(fresh?.availableBalance).toBe(60000);
+
+    // The JournalPosted event (ledger is authoritative) applies the debit.
+    await repo.applyLedgerPosting(w.id, 'debit', 40000);
+    const synced = await repo.findWalletById(w.id);
+    expect(synced?.ledgerBalance).toBe(60000);
+    expect(synced?.availableBalance).toBe(60000);
   });
 
   it('release returns funds to available', async () => {
@@ -168,5 +177,104 @@ describe('ReserveFundsUseCase — financial integrity', () => {
     const fresh = await repo.findWalletById(w.id);
     expect(fresh?.reservedBalance).toBe(90000); // 3 × 30000
     expect(fresh?.availableBalance).toBe(10000);
+  });
+});
+
+describe('JournalPostedConsumer — ledger → wallet sync', () => {
+  async function walletWithLedgerAccount(
+    ledgerAccountId: string,
+  ): Promise<Wallet> {
+    const { wallet } = await createWallet.execute({
+      ownerId: newId(),
+      ownerType: 'USER',
+      type: 'PERSONAL',
+      currency: 'NGN' as Currency,
+      ledgerAccountId,
+    });
+    return wallet;
+  }
+
+  it('credits the wallet projection when the ledger posts to its account', async () => {
+    const acct = newId();
+    const w = await walletWithLedgerAccount(acct);
+
+    const event = createEnvelope({
+      eventType: 'JournalPosted',
+      correlationId: newId(),
+      producer: 'ledger-service',
+      data: {
+        journalId: newId(),
+        reference: `j-${newId()}`,
+        currency: 'NGN',
+        totalAmount: 50000,
+        postings: [
+          { accountId: acct, direction: 'credit', amount: 50000 },
+          { accountId: newId(), direction: 'debit', amount: 50000 },
+        ],
+      },
+    });
+
+    const updated = await consumer.handle(event);
+    expect(updated).toBe(1);
+
+    const synced = await repo.findWalletById(w.id);
+    expect(synced?.ledgerBalance).toBe(50000);
+    expect(synced?.availableBalance).toBe(50000);
+  });
+
+  it('ignores postings for accounts it does not own', async () => {
+    const w = await walletWithLedgerAccount(newId());
+
+    const event = createEnvelope({
+      eventType: 'JournalPosted',
+      correlationId: newId(),
+      producer: 'ledger-service',
+      data: {
+        journalId: newId(),
+        reference: `j-${newId()}`,
+        currency: 'NGN',
+        totalAmount: 30000,
+        postings: [
+          { accountId: newId(), direction: 'credit', amount: 30000 },
+          { accountId: newId(), direction: 'debit', amount: 30000 },
+        ],
+      },
+    });
+
+    const updated = await consumer.handle(event);
+    expect(updated).toBe(0);
+
+    const synced = await repo.findWalletById(w.id);
+    expect(synced?.ledgerBalance).toBe(0);
+  });
+
+  it('dedupes a redelivered event (at-least-once safety)', async () => {
+    const acct = newId();
+    const w = await walletWithLedgerAccount(acct);
+    const eventId = newId();
+
+    const makeEvent = () =>
+      createEnvelope({
+        eventId,
+        eventType: 'JournalPosted',
+        correlationId: newId(),
+        producer: 'ledger-service',
+        data: {
+          journalId: newId(),
+          reference: `j-${newId()}`,
+          currency: 'NGN',
+          totalAmount: 25000,
+          postings: [
+            { accountId: acct, direction: 'credit', amount: 25000 },
+            { accountId: newId(), direction: 'debit', amount: 25000 },
+          ],
+        },
+      });
+
+    expect(await consumer.handle(makeEvent())).toBe(1);
+    expect(await consumer.handle(makeEvent())).toBe(0); // duplicate ignored
+
+    const synced = await repo.findWalletById(w.id);
+    expect(synced?.ledgerBalance).toBe(25000); // not 50000
   });
 });

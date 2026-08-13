@@ -1,3 +1,11 @@
+// Load .env before config reads env vars (process.loadEnvFile does not
+// override variables already present in the environment).
+try {
+  process.loadEnvFile();
+} catch {
+  // No .env file — fine when env vars are provided by the environment.
+}
+
 import { CONFIG } from '@atlas/config';
 import { NestFactory } from '@nestjs/core';
 import {

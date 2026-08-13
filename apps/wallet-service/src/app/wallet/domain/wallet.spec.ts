@@ -77,11 +77,24 @@ describe('Wallet balances', () => {
     expect(() => makeWallet().credit(0)).toThrow(InvalidAmountError);
   });
 
-  it('capture debits the ledger balance', () => {
+  it('capture clears the reservation; the ledger event moves the ledger balance', () => {
     const w = makeWallet({ ledgerBalance: 100000, reservedBalance: 30000 });
     const next = w.captureReservation(30000);
-    expect(next.ledgerBalance).toBe(70000);
+    // Capture only clears the hold — the ledger balance is debited separately
+    // by the JournalPosted event (ledger is authoritative).
+    expect(next.ledgerBalance).toBe(100000);
     expect(next.reservedBalance).toBe(0);
+    expect(next.availableBalance).toBe(100000);
+
+    // ...which is applied via applyLedgerPosting.
+    const synced = next.applyLedgerPosting('debit', 30000);
+    expect(synced.ledgerBalance).toBe(70000);
+  });
+
+  it('applyLedgerPosting credits and debits the projection', () => {
+    const w = makeWallet({ ledgerBalance: 100000 });
+    expect(w.applyLedgerPosting('credit', 5000).ledgerBalance).toBe(105000);
+    expect(w.applyLedgerPosting('debit', 5000).ledgerBalance).toBe(95000);
   });
 
   it('release returns funds to available without touching ledger', () => {

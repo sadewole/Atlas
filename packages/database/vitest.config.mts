@@ -8,6 +8,10 @@ export default defineConfig(() => ({
     watch: false,
     globals: true,
     environment: 'node',
+    // Testcontainers can exceed vitest's default 5s timeout when Postgres
+    // containers start in parallel with other suites.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     reporters: ['default'],
     coverage: {

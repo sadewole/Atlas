@@ -35,6 +35,8 @@ export const wallets = pgTable('wallets', {
   reservedBalance: bigint('reserved_balance', { mode: 'number' }).notNull().default(0),
   /** Optimistic-lock counter: every write checks it to prevent lost updates. */
   version: bigint('version', { mode: 'number' }).notNull().default(0),
+  /** The ledger account this wallet's balance projects from (sync target). */
+  ledgerAccountId: uuid('ledger_account_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

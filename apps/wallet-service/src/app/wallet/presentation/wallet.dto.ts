@@ -16,6 +16,8 @@ export const createWalletSchema = z.object({
     'TREASURY',
   ]),
   currency: z.enum(SUPPORTED_CURRENCIES),
+  /** The ledger account this wallet's balance projects from. */
+  ledgerAccountId: z.string().optional(),
 });
 
 /** POST /v1/wallets/:id/reserve */

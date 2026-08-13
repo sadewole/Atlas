@@ -9,6 +9,8 @@ export interface CreateWalletCommand {
   ownerType: OwnerType;
   type: WalletType;
   currency: Currency;
+  /** The ledger account this wallet's balance projects from. */
+  ledgerAccountId?: string;
 }
 
 export interface CreateWalletResult {
@@ -35,6 +37,7 @@ export class CreateWalletUseCase {
       type: command.type,
       currency: command.currency,
       status: 'ACTIVE',
+      ledgerAccountId: command.ledgerAccountId,
     });
 
     // Ensure the wallet number is unique by retrying on the (unlikely) collision.
@@ -51,6 +54,7 @@ export class CreateWalletUseCase {
           type: wallet.type,
           currency: wallet.currency,
           status: wallet.status,
+          ledgerAccountId: wallet.ledgerAccountId ?? null,
         });
         return {
           wallet: new Wallet({
@@ -61,6 +65,7 @@ export class CreateWalletUseCase {
             type: wallet.type,
             currency: wallet.currency,
             status: wallet.status,
+            ledgerAccountId: wallet.ledgerAccountId,
           }),
         };
       }

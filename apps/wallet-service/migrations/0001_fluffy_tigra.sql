@@ -1,0 +1,1 @@
+ALTER TABLE "wallets" ADD COLUMN "ledger_account_id" uuid;

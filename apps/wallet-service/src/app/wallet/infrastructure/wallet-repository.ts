@@ -21,6 +21,7 @@ export interface NewWalletRecord {
   type: string;
   currency: string;
   status: string;
+  ledgerAccountId?: string | null;
 }
 
 export interface NewReservationRecord {
@@ -84,6 +85,16 @@ export class WalletRepository {
     return row ? this.mapWallet(row) : null;
   }
 
+  /** Find the wallet whose projection maps to a ledger account. */
+  async findWalletByLedgerAccountId(
+    ledgerAccountId: string,
+  ): Promise<Wallet | null> {
+    const row = await this.db.query.wallets.findFirst({
+      where: eq(wallets.ledgerAccountId, ledgerAccountId),
+    });
+    return row ? this.mapWallet(row) : null;
+  }
+
   /**
    * Persist a wallet change with optimistic locking.
    * Returns true when the update applied; false when the version moved on
@@ -109,6 +120,22 @@ export class WalletRepository {
       )
       .returning({ id: wallets.id });
     return result.length > 0;
+  }
+
+  /**
+   * Apply a ledger posting delta to a wallet's projection atomically.
+   * Used by the JournalPosted event consumer. Optimistic-lock safe: reads the
+   * wallet, applies the delta, writes back with the version guard.
+   */
+  async applyLedgerPosting(
+    walletId: string,
+    direction: 'debit' | 'credit',
+    amount: number,
+  ): Promise<boolean> {
+    const wallet = await this.findWalletById(walletId);
+    if (!wallet) return false;
+    const next = wallet.applyLedgerPosting(direction, amount);
+    return this.updateWalletWithLock(next, wallet.version + 1);
   }
 
   async insertReservation(
@@ -176,6 +203,7 @@ export class WalletRepository {
     ledgerBalance: number;
     reservedBalance: number;
     version: number;
+    ledgerAccountId: string | null;
   }): Wallet {
     return new Wallet({
       id: row.id,
@@ -188,6 +216,7 @@ export class WalletRepository {
       ledgerBalance: row.ledgerBalance,
       reservedBalance: row.reservedBalance,
       version: row.version,
+      ledgerAccountId: row.ledgerAccountId ?? undefined,
     });
   }
 

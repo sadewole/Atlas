@@ -49,12 +49,14 @@ export interface WalletProps {
   ledgerBalance?: number;
   reservedBalance?: number;
   version?: number;
+  /** The ledger account this wallet's balance projects from. */
+  ledgerAccountId?: string;
 }
 
 /**
  * A wallet is a business-rules facade over the ledger. It is NOT the
- * accounting engine — balances are projections that the ledger (or, for this
- * slice, local bookkeeping) keeps in sync.
+ * accounting engine — `ledgerBalance` is a projection synced from the ledger
+ * (via JournalPosted events); `reservedBalance` is managed locally.
  *
  * Financial correctness is protected by:
  * - an explicit state machine (illegal transitions throw)
@@ -72,6 +74,7 @@ export class Wallet {
   readonly ledgerBalance: number;
   readonly reservedBalance: number;
   readonly version: number;
+  readonly ledgerAccountId?: string;
 
   constructor(props: WalletProps) {
     this.id = props.id;
@@ -83,6 +86,7 @@ export class Wallet {
     this.status = props.status ?? 'INITIALIZING';
     this.ledgerBalance = props.ledgerBalance ?? 0;
     this.reservedBalance = props.reservedBalance ?? 0;
+    this.ledgerAccountId = props.ledgerAccountId;
     this.version = props.version ?? 0;
   }
 
@@ -148,14 +152,17 @@ export class Wallet {
     });
   }
 
-  /** Capture a reservation: reserved funds become permanently debited. */
+  /**
+   * Capture a reservation: the reserved funds are now permanently spent.
+   * Clears the reservation only — the ledger already debited `ledgerBalance`
+   * via its journal, so the projection updates through the JournalPosted event.
+   */
   captureReservation(amount: number): Wallet {
     if (amount <= 0 || amount > this.reservedBalance) {
       throw new InvalidAmountError();
     }
     return new Wallet({
       ...this.props(),
-      ledgerBalance: this.ledgerBalance - amount,
       reservedBalance: this.reservedBalance - amount,
     });
   }
@@ -180,6 +187,20 @@ export class Wallet {
     });
   }
 
+  /**
+   * Apply a ledger posting to this wallet's projection.
+   * Called by the wallet's JournalPosted event consumer.
+   * A debit lowers the balance, a credit raises it.
+   */
+  applyLedgerPosting(direction: 'debit' | 'credit', amount: number): Wallet {
+    if (amount <= 0) throw new InvalidAmountError();
+    const delta = direction === 'debit' ? -amount : amount;
+    return new Wallet({
+      ...this.props(),
+      ledgerBalance: this.ledgerBalance + delta,
+    });
+  }
+
   private props(): WalletProps {
     return {
       id: this.id,
@@ -192,6 +213,7 @@ export class Wallet {
       ledgerBalance: this.ledgerBalance,
       reservedBalance: this.reservedBalance,
       version: this.version,
+      ledgerAccountId: this.ledgerAccountId,
     };
   }
 }

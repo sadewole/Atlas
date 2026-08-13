@@ -26,7 +26,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-atlas} -d ${POSTGRES_DB:-atlas}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-atlas} -d ${POSTGRES_DB:-atlas}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -51,13 +55,13 @@ services:
     restart: unless-stopped
     environment:
       PUBSUB_PROJECT_ID: ${PUBSUB_PROJECT_ID:-atlas-dev}
+      PUBSUB_EMULATOR_HOST: 0.0.0.0:8085
+    # Run the emulator jar directly. `gcloud beta emulators pubsub start`
+    # forces --host=localhost on the Java process (unreachable from the host),
+    # and the emulator ignores --port when --projects is present. This direct
+    # invocation binds 0.0.0.0:8085 reliably.
     command: >
-      bash -c "
-        gcloud beta emulators pubsub start
-          --project=${PUBSUB_PROJECT_ID:-atlas-dev}
-          --host-port=0.0.0.0:8085
-          --data-dir=/data
-      "
+      bash -c "java -jar /usr/lib/google-cloud-sdk/platform/pubsub-emulator/lib/cloud-pubsub-emulator-*.jar --host=0.0.0.0 --port=8085"
     ports:
       - "8085:8085"
     volumes:

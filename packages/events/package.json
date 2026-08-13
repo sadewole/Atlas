@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@atlas/shared": "workspace:*",
+    "@google-cloud/pubsub": "^4.11.0",
     "tslib": "^2.3.0"
   }
 }
