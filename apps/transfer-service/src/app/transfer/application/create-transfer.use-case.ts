@@ -1,4 +1,5 @@
 import { Currency, newId } from '@atlas/shared';
+import { createEnvelope } from '@atlas/events';
 import { Injectable, Logger } from '@nestjs/common';
 import { Transfer, TransferType } from '../domain/index.js';
 import { TransferRepository } from '../infrastructure/transfer-repository.js';
@@ -130,14 +131,17 @@ export class CreateTransferUseCase {
       // Step 3 — capture the reservation (money permanently moves).
       await this.walletClient.capture(reservationId);
 
-      // Done — terminal state.
-      await this.repository.updateStatus(
+      // Done — terminal state, written atomically with the outbox event.
+      const completed = current.withStatus('COMPLETED');
+      await this.repository.markTerminal(
         current.id,
         current.status,
         'COMPLETED',
+        this.terminalEvent('TransferCompleted', completed, {
+          journalId,
+        }),
         new Date(),
       );
-      const completed = current.withStatus('COMPLETED');
 
       this.logger.log(
         `Transfer ${current.reference} completed (journal ${journalId})`,
@@ -179,12 +183,56 @@ export class CreateTransferUseCase {
       }
     }
 
-    await this.repository.updateStatus(
+    // The state machine requires COMPENSATING before FAILED (you can't jump
+    // straight from POSTING/SETTLING to FAILED).
+    let failed: Transfer;
+    try {
+      failed = transfer.withStatus('COMPENSATING').withStatus('FAILED');
+    } catch {
+      // Some states (e.g. CREATED/VALIDATING) go straight to FAILED.
+      failed = transfer.withStatus('FAILED');
+    }
+    await this.repository.markTerminal(
       transfer.id,
       transfer.status,
       'FAILED',
+      this.terminalEvent('TransferFailed', failed, {
+        reason: String((cause as Error)?.message ?? cause),
+      }),
       new Date(),
     );
+  }
+
+  /** Build a terminal transfer event envelope (published via the outbox). */
+  private terminalEvent(
+    eventType: 'TransferCompleted' | 'TransferFailed',
+    transfer: Transfer,
+    extra: { journalId?: string; reason?: string },
+  ): { eventId: string; eventType: string; payload: string } {
+    const envelope = createEnvelope({
+      eventType,
+      eventVersion: 1,
+      producer: 'transfer-service',
+      correlationId: transfer.correlationId ?? `transfer:${transfer.id}`,
+      data: {
+        transferId: transfer.id,
+        reference: transfer.reference,
+        type: transfer.type,
+        currency: transfer.currency,
+        amount: transfer.amount,
+        feeAmount: transfer.feeAmount,
+        sourceWalletId: transfer.sourceWalletId,
+        destinationWalletId: transfer.destinationWalletId,
+        status: transfer.status,
+        journalId: extra.journalId,
+        reason: extra.reason,
+      },
+    });
+    return {
+      eventId: envelope.eventId,
+      eventType: envelope.eventType,
+      payload: JSON.stringify(envelope),
+    };
   }
 
   private async transition(

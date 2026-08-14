@@ -45,10 +45,12 @@ jobs:
       # Fail fast: format check first, then the core quality gates.
       # `nx affected` only runs tasks for projects changed in this PR/commit.
       # Integration tests use Testcontainers (Docker) — available on ubuntu-latest.
+      # Run tests with limited parallelism: multiple Testcontainers suites
+      # starting Postgres containers at once can exceed hook timeouts.
       - run: pnpm exec nx format:check
       - run: pnpm exec nx affected -t typecheck
       - run: pnpm exec nx affected -t lint
-      - run: pnpm exec nx affected -t test
+      - run: pnpm exec nx affected -t test --parallel=2
       - run: pnpm exec nx affected -t build
 
   security:

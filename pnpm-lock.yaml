@@ -8,6 +8,7 @@ overrides:
   find-my-way: 9.7.0
   '@fastify/static': 9.3.0
   '@fastify/view': 12.0.0
+  drizzle-orm: 0.45.2
 
 importers:
 
@@ -214,7 +215,7 @@ importers:
         specifier: ^11.1.28
         version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.1.28)
       drizzle-orm:
-        specifier: ^0.45.2
+        specifier: 0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(postgres@3.4.9)
       nestjs-pino:
         specifier: ^4.6.1
@@ -259,6 +260,9 @@ importers:
       '@atlas/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@atlas/events':
+        specifier: workspace:*
+        version: link:../../packages/events
       '@atlas/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -275,7 +279,7 @@ importers:
         specifier: ^11.0.0
         version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.1.28)
       drizzle-orm:
-        specifier: ^0.45.2
+        specifier: 0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(postgres@3.4.9)
       nestjs-pino:
         specifier: ^4.6.1
@@ -342,7 +346,7 @@ importers:
         specifier: ^11.0.0
         version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.1.28)
       drizzle-orm:
-        specifier: ^0.45.2
+        specifier: 0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(postgres@3.4.9)
       nestjs-pino:
         specifier: ^4.6.1
@@ -409,7 +413,7 @@ importers:
         specifier: ^11.1.28
         version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.1)
       drizzle-orm:
-        specifier: ^0.45.2
+        specifier: 0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(postgres@3.4.9)
       postgres:
         specifier: ^3.4.9

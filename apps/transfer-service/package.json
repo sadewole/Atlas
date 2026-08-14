@@ -5,6 +5,7 @@
   "dependencies": {
     "@atlas/config": "workspace:*",
     "@atlas/database": "workspace:*",
+    "@atlas/events": "workspace:*",
     "@atlas/logger": "workspace:*",
     "@atlas/shared": "workspace:*",
     "@nestjs/common": "^11.0.0",

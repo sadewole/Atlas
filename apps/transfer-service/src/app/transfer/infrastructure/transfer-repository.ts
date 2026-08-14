@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { Transfer, TransferStatus } from '../domain/index.js';
 import {
+  outboxEvents,
   transferStatusHistory,
   transfers,
   transferSchema,
@@ -86,6 +87,40 @@ export class TransferRepository {
 
   /** Test-only: when set, updateStatus throws for this target status. */
   failTransitionTo: string | undefined = undefined;
+
+  /**
+   * Mark a transfer terminal (COMPLETED/FAILED) and write its event to the
+   * outbox — all in ONE transaction, so the event is durable with the status.
+   */
+  async markTerminal(
+    id: string,
+    fromStatus: string,
+    toStatus: string,
+    outboxEvent: { eventId: string; eventType: string; payload: string },
+    completedAt?: Date,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(transfers)
+        .set({
+          status: toStatus,
+          ...(completedAt ? { completedAt } : {}),
+        })
+        .where(eq(transfers.id, id));
+      await tx.insert(transferStatusHistory).values({
+        transferId: id,
+        fromStatus: fromStatus ?? null,
+        toStatus,
+      });
+      await tx.insert(outboxEvents).values({
+        eventId: outboxEvent.eventId,
+        eventType: outboxEvent.eventType,
+        payload: outboxEvent.payload,
+        status: 'pending',
+        attempts: 0,
+      });
+    });
+  }
 
   private async recordStatus(
     transferId: string,
