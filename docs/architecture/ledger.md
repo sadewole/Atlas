@@ -181,6 +181,29 @@ It only knows accounts.
 
 ---
 
+## Account Model: Per-Wallet Accounts
+
+> **Clarification (decision record):** accounts are provisioned **per wallet/merchant**, not one shared account per type. See `_learn/22-ledger-account-model.md` for the full reasoning.
+
+The chart of accounts (below) is the **classification hierarchy** — it defines the types (asset/liability/etc.), codes, and each account's place in the accounting equation. But the **leaf accounts are provisioned per business entity**:
+
+- Every wallet gets its own liability account (conceptually coded under its type, e.g. a customer wallet under `2100`), created when the wallet is created
+- The wallet stores the `ledgerAccountId` its balance projects from
+- The examples in this spec (`Samuel Wallet Liability`, `John Wallet Liability`) are literal, not shorthand — each is a distinct account
+
+Why per-wallet and not shared:
+- **Reconciliation** — the nightly reconciliation (ledger vs wallet projection vs settlement) must work per wallet, not just in aggregate
+- **Attribution & audit** — "show Samuel's ledger history" must be answerable from the ledger, not reconstructed from projections
+- **Controls** — freezing a wallet's funds should be enforceable at the ledger layer
+- **Production reality** — Modern Treasury, Stripe, and Adyen provision accounts per counterparty
+
+Consequences for other services:
+- **Wallet Service** creates/links its ledger account on wallet creation (auto-provision, or store a provided id)
+- **Transfer Service** resolves the source/destination ledger accounts **from the wallets**, not from client-supplied ids
+- A client can never post to an arbitrary account — the service always resolves accounts from owned resources
+
+---
+
 ## Journal
 
 A Journal groups postings.

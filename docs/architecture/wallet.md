@@ -118,6 +118,8 @@ reservedBalance;
 
 version;
 
+ledgerAccountId;   // the ledger account this wallet's balance projects from
+
 createdAt;
 
 updatedAt;
@@ -128,6 +130,8 @@ Notice something important.
 There is **no transaction history** inside the wallet.
 
 That belongs to the Ledger Service.
+
+**`ledgerAccountId`:** each wallet is linked to a **dedicated ledger account** (per-wallet accounts, not one shared account per type — see `_learn/22-ledger-account-model.md`). The account is provisioned when the wallet is created, and the wallet's `ledgerBalance` is a projection of that account. The wallet never writes to the ledger directly — it reacts to `JournalPosted` events and the ledger is authoritative.
 
 ---
 

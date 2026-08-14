@@ -34,6 +34,7 @@ This folder is your personal learning resource. Unlike the `docs/` folder (which
 | 19 | [Event-Driven Sync](./19-event-driven-sync.md) | Wallet↔Ledger via real Pub/Sub; ledger-authoritative projections |
 | 20 | [Outbox Pattern](./20-outbox-pattern.md) | Durable event publishing: write events atomically, deliver via a worker |
 | 21 | [Transfer Events](./21-transfer-events.md) | TransferCompleted/Failed via the outbox; the drizzle dual-copy fix |
+| 22 | [Ledger Account Model](./22-ledger-account-model.md) | Decision record: per-wallet ledger accounts vs shared — the production-grade call |
 
 ## Architecture Specs (Reference)
 

@@ -226,6 +226,12 @@ atlas/
 - **Production target (per SAS):** each service gets its **own Cloud SQL instance** (`ledger_db`, `wallet_db`, `transfer_db`, ...). This lands in the Terraform/GCP bootstrap — do not assume per-service DBs exist yet.
 - Isolation that matters TODAY is enforced by convention + schema, not by infrastructure. Never query another service's tables directly; always go through its API/events.
 
+### Ledger Account Model
+- **Per-wallet ledger accounts** — each wallet has a dedicated ledger account (`ledgerAccountId`), provisioned at wallet creation. NOT one shared account per wallet type. See `_learn/22-ledger-account-model.md` for the decision record.
+- The chart of accounts is the **classification hierarchy** (types/codes), not the full account set. Leaf accounts are provisioned per business entity.
+- **Transfer resolves source/destination ledger accounts FROM the wallets**, never from client-supplied ids.
+- Pending code changes (not yet done): wallet API exposes `ledgerAccountId`; wallet auto-provisions its account; transfer DTO drops `sourceAccountId`/`destinationAccountId`; ledger posting unchanged.
+
 ### Money
 - Always stored/transmitted in minor units (e.g., kobo for NGN)
 - Never use floating-point for financial values
