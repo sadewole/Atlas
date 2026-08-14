@@ -221,6 +221,11 @@ atlas/
 
 ## Key Conventions
 
+### Database Isolation
+- **Local dev (current):** all services share ONE PostgreSQL database (`atlas`) in Docker Compose, with **separate tables per service**. Services only know their own schema object — no cross-service table access.
+- **Production target (per SAS):** each service gets its **own Cloud SQL instance** (`ledger_db`, `wallet_db`, `transfer_db`, ...). This lands in the Terraform/GCP bootstrap — do not assume per-service DBs exist yet.
+- Isolation that matters TODAY is enforced by convention + schema, not by infrastructure. Never query another service's tables directly; always go through its API/events.
+
 ### Money
 - Always stored/transmitted in minor units (e.g., kobo for NGN)
 - Never use floating-point for financial values
