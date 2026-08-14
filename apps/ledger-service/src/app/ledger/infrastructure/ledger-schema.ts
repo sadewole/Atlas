@@ -82,12 +82,33 @@ export const balanceProjection = pgTable('balance_projection', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * The outbox: a pending-events queue written atomically with business data.
+ * A background publisher drains this to Pub/Sub, so an event is never lost
+ * if the process crashes between the DB commit and the publish.
+ */
+export const outboxEvents = pgTable('outbox_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  /** The event's unique id — dedupes redeliveries. */
+  eventId: uuid('event_id').notNull().unique(),
+  eventType: varchar('event_type', { length: 100 }).notNull(),
+  /** Full event envelope JSON (published verbatim). */
+  payload: text('payload').notNull(),
+  /** pending | published. pending rows are the publisher's work queue. */
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  /** Publish attempts so far — a crash-safe retry counter. */
+  attempts: bigint('attempts', { mode: 'number' }).notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+});
+
 /** The schema object passed to DatabaseModule.forRoot(). */
 export const ledgerSchema = {
   accounts,
   journals,
   journalPostings,
   balanceProjection,
+  outboxEvents,
 };
 
 export type AccountRow = typeof accounts.$inferSelect;

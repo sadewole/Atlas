@@ -8,6 +8,7 @@ import {
   journalPostings,
   journals,
   ledgerSchema,
+  outboxEvents,
 } from './ledger-schema.js';
 
 /** A journal together with its postings, ready to be written. */
@@ -99,6 +100,7 @@ export class LedgerRepository {
    *   1. insert the journal
    *   2. insert its postings
    *   3. update the balance projection for each affected account
+   *   4. write the outbox event (published asynchronously — see OutboxPublisher)
    *
    * The affected projection rows are locked with `FOR UPDATE` so concurrent
    * postings serialize — the classic protection against double-spends.
@@ -111,6 +113,7 @@ export class LedgerRepository {
   async postJournal(
     record: NewJournalRecord,
     accountsById: ReadonlyMap<string, Account>,
+    outboxEvent?: { eventId: string; eventType: string; payload: string },
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx.insert(journals).values({
@@ -132,6 +135,19 @@ export class LedgerRepository {
           sequenceNumber: i,
         })),
       );
+
+      // The outbox event is written in the SAME transaction as the journal.
+      // If the process crashes before the background publisher drains it, the
+      // row is still here — the event is never lost.
+      if (outboxEvent) {
+        await tx.insert(outboxEvents).values({
+          eventId: outboxEvent.eventId,
+          eventType: outboxEvent.eventType,
+          payload: outboxEvent.payload,
+          status: 'pending',
+          attempts: 0,
+        });
+      }
 
       // Update projections with an atomic upsert. `ON CONFLICT DO UPDATE`
       // handles BOTH the "row exists" and "row doesn't exist yet" cases in a

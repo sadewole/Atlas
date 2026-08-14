@@ -1,13 +1,12 @@
 import { Currency, Money, newId } from '@atlas/shared';
-import { createEnvelope, type EventPublisher } from '@atlas/events';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { createEnvelope } from '@atlas/events';
+import { Injectable, Logger } from '@nestjs/common';
 import { Account, Journal, Posting } from '../domain/index.js';
 import { LedgerRepository } from '../infrastructure/ledger-repository.js';
 import {
   AccountClosedError,
   AccountNotFoundError,
 } from '../domain/index.js';
-import { EVENT_PUBLISHER } from '../tokens.js';
 
 export interface PostingCommand {
   accountId: string;
@@ -42,11 +41,7 @@ export interface PostJournalResult {
 export class PostJournalUseCase {
   private readonly logger = new Logger(PostJournalUseCase.name);
 
-  constructor(
-    private readonly repository: LedgerRepository,
-    @Inject(EVENT_PUBLISHER)
-    private readonly publisher: EventPublisher,
-  ) {}
+  constructor(private readonly repository: LedgerRepository) {}
 
   async execute(command: PostJournalCommand): Promise<PostJournalResult> {
     // Idempotency: a retried reference returns the original result.
@@ -91,7 +86,27 @@ export class PostJournalUseCase {
       ),
     });
 
-    // Persist journal + postings + projection atomically.
+    // Build the event envelope BEFORE persisting so its eventId is written to
+    // the outbox atomically with the journal.
+    const envelope = createEnvelope({
+      eventType: 'JournalPosted',
+      eventVersion: 1,
+      producer: 'ledger-service',
+      correlationId: 'ledger:' + journal.id,
+      data: {
+        journalId: journal.id,
+        reference: journal.reference,
+        currency: journal.currency,
+        totalAmount: journal.totalAmount.amount,
+        postings: journal.postings.map((p) => ({
+          accountId: p.accountId,
+          direction: p.direction,
+          amount: p.amount.amount,
+        })),
+      },
+    });
+
+    // Persist journal + postings + projection + OUTBOX EVENT atomically.
     await this.repository.postJournal(
       {
         id: journal.id,
@@ -107,27 +122,11 @@ export class PostJournalUseCase {
         })),
       },
       accountsById,
-    );
-
-    // Publish the domain fact AFTER the transaction commits.
-    await this.publisher.publish(
-      createEnvelope({
-        eventType: 'JournalPosted',
-        eventVersion: 1,
-        producer: 'ledger-service',
-        correlationId: 'ledger:' + journal.id,
-        data: {
-          journalId: journal.id,
-          reference: journal.reference,
-          currency: journal.currency,
-          totalAmount: journal.totalAmount.amount,
-          postings: journal.postings.map((p) => ({
-            accountId: p.accountId,
-            direction: p.direction,
-            amount: p.amount.amount,
-          })),
-        },
-      }),
+      {
+        eventId: envelope.eventId,
+        eventType: envelope.eventType,
+        payload: JSON.stringify(envelope),
+      },
     );
 
     return { journalId: journal.id, reference: journal.reference };
