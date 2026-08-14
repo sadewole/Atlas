@@ -7,6 +7,7 @@ import {
   reservations,
   wallets,
   walletSchema,
+  walletSequences,
 } from './wallet-schema.js';
 
 type TxClient = Parameters<
@@ -59,6 +60,27 @@ export class WalletRepository {
     return this.db.transaction(fn);
   }
 
+  /**
+   * Atomically allocate the next wallet-number sequence for a currency.
+   *
+   * Implemented as a single upsert: INSERT a fresh row with value 1, or on
+   * conflict bump the existing row's value by 1. Postgres serializes
+   * conflicting upserts on the same primary key, so two concurrent calls can
+   * never return the same value — no check-then-act race.
+   */
+  async nextWalletSequence(currency: string): Promise<number> {
+    const [row] = await this.db
+      .insert(walletSequences)
+      .values({ currency, value: 1 })
+      .onConflictDoUpdate({
+        target: walletSequences.currency,
+        set: { value: sql`${walletSequences.value} + 1` },
+      })
+      .returning({ value: walletSequences.value });
+    if (!row) throw new Error('failed to allocate wallet sequence');
+    return row.value;
+  }
+
   async insertWallet(
     wallet: NewWalletRecord,
     tx?: TxClient,
@@ -74,13 +96,6 @@ export class WalletRepository {
     const db = tx ?? this.db;
     const row = await db.query.wallets.findFirst({
       where: eq(wallets.id, id),
-    });
-    return row ? this.mapWallet(row) : null;
-  }
-
-  async findWalletByNumber(walletNumber: string): Promise<Wallet | null> {
-    const row = await this.db.query.wallets.findFirst({
-      where: eq(wallets.walletNumber, walletNumber),
     });
     return row ? this.mapWallet(row) : null;
   }

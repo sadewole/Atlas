@@ -6,7 +6,7 @@ import { Currency, newId } from '@atlas/shared';
 import { transferSchema } from './transfer-schema.js';
 import { TransferRepository } from './transfer-repository.js';
 import { CreateTransferUseCase } from '../application/create-transfer.use-case.js';
-import { WalletClient } from './wallet.client.js';
+import { WalletBalance, WalletClient } from './wallet.client.js';
 import { LedgerClient } from './ledger.client.js';
 
 /**
@@ -25,9 +25,10 @@ let pool: Sql;
 let repo: TransferRepository;
 let useCase: CreateTransferUseCase;
 
-/** Fake wallet service that tracks reservations and balance. */
+/** Fake wallet service that tracks reservations, balance, and ledger accounts. */
 class FakeWalletClient extends WalletClient {
   balances = new Map<string, number>();
+  ledgerAccounts = new Map<string, string>();
   reservations = new Map<string, { walletId: string; amount: number; status: string }>();
   failReserve = false;
   failCapture = false;
@@ -55,6 +56,19 @@ class FakeWalletClient extends WalletClient {
     if (!res || res.status !== 'PENDING') throw new Error('not pending');
     res.status = 'CAPTURED';
     // balance already reduced by reserve; capture just finalizes
+  }
+
+  override async getWallet(walletId: string): Promise<WalletBalance> {
+    const ledgerAccountId = this.ledgerAccounts.get(walletId);
+    if (!ledgerAccountId) throw new Error('wallet missing ledger account');
+    return {
+      walletId,
+      ledgerBalance: this.balances.get(walletId) ?? 0,
+      reservedBalance: 0,
+      availableBalance: this.balances.get(walletId) ?? 0,
+      status: 'ACTIVE',
+      ledgerAccountId,
+    };
   }
 
   override async release(reservationId: string): Promise<void> {
@@ -93,10 +107,16 @@ function command(overrides: Partial<Parameters<CreateTransferUseCase['execute']>
     currency: 'NGN' as Currency,
     amount: 25000,
     idempotencyKey: `idem-${newId()}`,
-    sourceAccountId: newId(),
-    destinationAccountId: newId(),
     ...overrides,
   };
+}
+
+/** Register both wallets in the fake with ledger accounts (+ a source balance). */
+function setupWallets(cmd: { sourceWalletId: string; destinationWalletId: string }, sourceBalance = 100000) {
+  fakeWallet.ledgerAccounts.set(cmd.sourceWalletId, newId());
+  fakeWallet.ledgerAccounts.set(cmd.destinationWalletId, newId());
+  fakeWallet.balances.set(cmd.sourceWalletId, sourceBalance);
+  fakeWallet.balances.set(cmd.destinationWalletId, 0);
 }
 
 beforeAll(async () => {
@@ -125,6 +145,7 @@ afterAll(async () => {
 beforeEach(() => {
   // Fresh fake-client state per test so journals/balances don't leak.
   fakeWallet.balances.clear();
+  fakeWallet.ledgerAccounts.clear();
   fakeWallet.reservations.clear();
   fakeWallet.failReserve = false;
   fakeWallet.failCapture = false;
@@ -135,7 +156,7 @@ beforeEach(() => {
 describe('CreateTransferUseCase — Saga', () => {
   it('completes the happy path: reserve → journal → capture', async () => {
     const cmd = command();
-    fakeWallet.balances.set(cmd.sourceWalletId, 100000);
+    setupWallets(cmd);
 
     const { transfer } = await useCase.execute(cmd);
 
@@ -149,7 +170,7 @@ describe('CreateTransferUseCase — Saga', () => {
 
   it('is idempotent — same idempotency key returns the original transfer', async () => {
     const cmd = command();
-    fakeWallet.balances.set(cmd.sourceWalletId, 100000);
+    setupWallets(cmd);
 
     const first = await useCase.execute(cmd);
     const second = await useCase.execute(cmd);
@@ -160,7 +181,7 @@ describe('CreateTransferUseCase — Saga', () => {
 
   it('fails without compensation when reserve fails (nothing to undo)', async () => {
     const cmd = command();
-    fakeWallet.balances.set(cmd.sourceWalletId, 10000); // insufficient
+    setupWallets(cmd, 10000); // insufficient
     fakeWallet.failReserve = true;
 
     await expect(useCase.execute(cmd)).rejects.toThrow();
@@ -173,7 +194,7 @@ describe('CreateTransferUseCase — Saga', () => {
 
   it('compensates: releases the reservation when the ledger post fails', async () => {
     const cmd = command();
-    fakeWallet.balances.set(cmd.sourceWalletId, 100000);
+    setupWallets(cmd);
     fakeLedger.failPost = true;
 
     await expect(useCase.execute(cmd)).rejects.toThrow();
@@ -187,7 +208,7 @@ describe('CreateTransferUseCase — Saga', () => {
 
   it('compensates when the capture step fails', async () => {
     const cmd = command();
-    fakeWallet.balances.set(cmd.sourceWalletId, 100000);
+    setupWallets(cmd);
     fakeWallet.failCapture = true;
 
     await expect(useCase.execute(cmd)).rejects.toThrow();
@@ -203,7 +224,7 @@ describe('CreateTransferUseCase — Saga', () => {
     // transfer DB fails to persist the RESERVED transition. Compensation must
     // release the reservation even though the transfer never reached RESERVED.
     const cmd = command();
-    fakeWallet.balances.set(cmd.sourceWalletId, 100000);
+    setupWallets(cmd);
     repo.failTransitionTo = 'RESERVED';
 
     await expect(useCase.execute(cmd)).rejects.toThrow();

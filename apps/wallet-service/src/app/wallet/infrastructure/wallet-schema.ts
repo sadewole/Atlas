@@ -42,6 +42,19 @@ export const wallets = pgTable('wallets', {
 });
 
 /**
+ * Atomic per-currency wallet-number sequence.
+ *
+ * `nextWalletSequence` increments this row in a single upsert (INSERT ...
+ * ON CONFLICT DO UPDATE), so concurrent wallet creations can never both pick
+ * the same sequence number. Wallet numbers are `ATL-{CURRENCY}-{sequence}`
+ * (see wallet-number.ts) — the sequence is monotonic PER CURRENCY.
+ */
+export const walletSequences = pgTable('wallet_sequences', {
+  currency: varchar('currency', { length: 3 }).primaryKey(),
+  value: bigint('value', { mode: 'number' }).notNull().default(0),
+});
+
+/**
  * A hold on wallet funds. Locks `amount` out of the available balance without
  * moving money. Lifecycle: PENDING → CAPTURED | RELEASED | EXPIRED.
  * (available = ledger − reserved, so a reservation reduces available.)
@@ -69,6 +82,7 @@ export const reservations = pgTable('reservations', {
 export const walletSchema = {
   wallets,
   reservations,
+  walletSequences,
 };
 
 export type WalletRow = typeof wallets.$inferSelect;

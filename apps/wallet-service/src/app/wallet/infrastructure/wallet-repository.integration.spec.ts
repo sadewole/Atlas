@@ -11,14 +11,34 @@ import { CreateWalletUseCase } from '../application/create-wallet.use-case.js';
 import { ReserveFundsUseCase } from '../application/reserve-funds.use-case.js';
 import { ReservationActionUseCase } from '../application/reservation-action.use-case.js';
 import { JournalPostedConsumer } from '../application/journal-posted.consumer.js';
+import { LedgerClient } from './ledger.client.js';
 
 /**
  * Financial correctness integration tests against real PostgreSQL
  * (Testcontainers). These verify the guarantees that matter:
  *   - optimistic locking prevents lost updates under concurrency
- *   - reserve/capture maintain available = ledger - reserved
- *   - concurrent reservations cannot double-spend available balance
  */
+
+// Fake ledger client: returns a deterministic account id per wallet so tests
+// can reference it in JournalPosted events.
+class FakeLedgerClient extends LedgerClient {
+  ids: Record<string, string> = {};
+
+  constructor() {
+    super('http://fake-ledger');
+  }
+
+  override async createAccount(input: {
+    accountCode: string;
+    name: string;
+    type: string;
+    currency: string;
+  }) {
+    const id = newId();
+    this.ids[input.accountCode] = id;
+    return { id, accountCode: input.accountCode };
+  }
+}
 
 jest.setTimeout(30_000);
 
@@ -29,6 +49,7 @@ let createWallet: CreateWalletUseCase;
 let reserveFunds: ReserveFundsUseCase;
 let reservationAction: ReservationActionUseCase;
 let consumer: JournalPostedConsumer;
+let fakeLedger: FakeLedgerClient;
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('postgres:16-alpine').start();
@@ -43,7 +64,8 @@ beforeAll(async () => {
   const db = drizzle(pool, { schema: walletSchema });
   await migrate(db, { migrationsFolder: './migrations' });
   repo = new WalletRepository(db as never);
-  createWallet = new CreateWalletUseCase(repo);
+  fakeLedger = new FakeLedgerClient();
+  createWallet = new CreateWalletUseCase(repo, fakeLedger);
   reserveFunds = new ReserveFundsUseCase(repo);
   reservationAction = new ReservationActionUseCase(repo);
   consumer = new JournalPostedConsumer(repo);
@@ -181,22 +203,24 @@ describe('ReserveFundsUseCase — financial integrity', () => {
 });
 
 describe('JournalPostedConsumer — ledger → wallet sync', () => {
-  async function walletWithLedgerAccount(
-    ledgerAccountId: string,
-  ): Promise<Wallet> {
+  /** Create a wallet (auto-provisions its ledger account) and return its account id. */
+  async function walletWithLedgerAccount(): Promise<{
+    wallet: Wallet;
+    ledgerAccountId: string;
+  }> {
     const { wallet } = await createWallet.execute({
       ownerId: newId(),
       ownerType: 'USER',
       type: 'PERSONAL',
       currency: 'NGN' as Currency,
-      ledgerAccountId,
     });
-    return wallet;
+    const fresh = await repo.findWalletById(wallet.id);
+    if (!fresh?.ledgerAccountId) throw new Error('wallet not provisioned');
+    return { wallet: fresh, ledgerAccountId: fresh.ledgerAccountId };
   }
 
   it('credits the wallet projection when the ledger posts to its account', async () => {
-    const acct = newId();
-    const w = await walletWithLedgerAccount(acct);
+    const { wallet: w, ledgerAccountId } = await walletWithLedgerAccount();
 
     const event = createEnvelope({
       eventType: 'JournalPosted',
@@ -208,7 +232,7 @@ describe('JournalPostedConsumer — ledger → wallet sync', () => {
         currency: 'NGN',
         totalAmount: 50000,
         postings: [
-          { accountId: acct, direction: 'credit', amount: 50000 },
+          { accountId: ledgerAccountId, direction: 'credit', amount: 50000 },
           { accountId: newId(), direction: 'debit', amount: 50000 },
         ],
       },
@@ -223,7 +247,7 @@ describe('JournalPostedConsumer — ledger → wallet sync', () => {
   });
 
   it('ignores postings for accounts it does not own', async () => {
-    const w = await walletWithLedgerAccount(newId());
+    const { wallet: w } = await walletWithLedgerAccount();
 
     const event = createEnvelope({
       eventType: 'JournalPosted',
@@ -249,8 +273,7 @@ describe('JournalPostedConsumer — ledger → wallet sync', () => {
   });
 
   it('dedupes a redelivered event (at-least-once safety)', async () => {
-    const acct = newId();
-    const w = await walletWithLedgerAccount(acct);
+    const { wallet: w, ledgerAccountId } = await walletWithLedgerAccount();
     const eventId = newId();
 
     const makeEvent = () =>
@@ -265,7 +288,7 @@ describe('JournalPostedConsumer — ledger → wallet sync', () => {
           currency: 'NGN',
           totalAmount: 25000,
           postings: [
-            { accountId: acct, direction: 'credit', amount: 25000 },
+            { accountId: ledgerAccountId, direction: 'credit', amount: 25000 },
             { accountId: newId(), direction: 'debit', amount: 25000 },
           ],
         },

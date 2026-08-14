@@ -17,9 +17,6 @@ export interface CreateTransferCommand {
   description?: string;
   idempotencyKey: string;
   correlationId?: string;
-  /** Ledger account ids for the debit/credit (mapped from wallets). */
-  sourceAccountId: string;
-  destinationAccountId: string;
 }
 
 export interface CreateTransferResult {
@@ -115,6 +112,20 @@ export class CreateTransferUseCase {
       reservationId = reservation.reservationId;
       current = await this.transition(current, 'RESERVED');
 
+      // Resolve the ledger accounts FROM the wallets (per-wallet account model).
+      // The client never supplies account ids — they're owned by the wallets.
+      const [sourceWallet, destWallet] = await Promise.all([
+        this.walletClient.getWallet(current.sourceWalletId),
+        this.walletClient.getWallet(current.destinationWalletId),
+      ]);
+      const sourceAccountId = sourceWallet.ledgerAccountId;
+      const destAccountId = destWallet.ledgerAccountId;
+      if (!sourceAccountId || !destAccountId) {
+        throw new Error(
+          'Wallets are missing ledger accounts (expected after wallet provisioning)',
+        );
+      }
+
       // Step 2 — post the balanced journal to the ledger.
       current = await this.transition(current, 'POSTING');
       const { journalId } = await this.ledgerClient.postJournal({
@@ -122,8 +133,8 @@ export class CreateTransferUseCase {
         currency: current.currency,
         description: current.description,
         postings: [
-          { accountId: command.sourceAccountId, direction: 'debit', amount: current.amount },
-          { accountId: command.destinationAccountId, direction: 'credit', amount: current.amount },
+          { accountId: sourceAccountId, direction: 'debit', amount: current.amount },
+          { accountId: destAccountId, direction: 'credit', amount: current.amount },
         ],
       });
       current = await this.transition(current, 'SETTLING');

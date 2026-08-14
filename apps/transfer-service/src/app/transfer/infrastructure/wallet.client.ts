@@ -12,6 +12,8 @@ export interface WalletBalance {
   reservedBalance: number;
   availableBalance: number;
   status: string;
+  /** The wallet's dedicated ledger account (used to post journal entries). */
+  ledgerAccountId?: string;
 }
 
 /**
@@ -115,6 +117,7 @@ export class WalletClient {
         reservedBalance?: number;
         availableBalance?: number;
         status?: string;
+        ledgerAccountId?: string;
       };
       error?: { message?: string };
     };
@@ -129,6 +132,7 @@ export class WalletClient {
       reservedBalance: body.data.reservedBalance ?? 0,
       availableBalance: body.data.availableBalance ?? 0,
       status: body.data.status ?? '',
+      ledgerAccountId: body.data.ledgerAccountId,
     };
   }
 }

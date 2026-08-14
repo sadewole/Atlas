@@ -230,7 +230,7 @@ atlas/
 - **Per-wallet ledger accounts** — each wallet has a dedicated ledger account (`ledgerAccountId`), provisioned at wallet creation. NOT one shared account per wallet type. See `_learn/22-ledger-account-model.md` for the decision record.
 - The chart of accounts is the **classification hierarchy** (types/codes), not the full account set. Leaf accounts are provisioned per business entity.
 - **Transfer resolves source/destination ledger accounts FROM the wallets**, never from client-supplied ids.
-- Pending code changes (not yet done): wallet API exposes `ledgerAccountId`; wallet auto-provisions its account; transfer DTO drops `sourceAccountId`/`destinationAccountId`; ledger posting unchanged.
+- Wallet creation auto-provisions its ledger account; the wallet API exposes `ledgerAccountId`; the transfer DTO accepts only wallet ids (no `sourceAccountId`/`destinationAccountId`). Wallet numbers and ledger account codes are allocated atomically per currency via a `wallet_sequences` counter (account code format `{type-prefix}-{CURRENCY}-{sequence}`, e.g. `2100-NGN-19`).
 
 ### Money
 - Always stored/transmitted in minor units (e.g., kobo for NGN)

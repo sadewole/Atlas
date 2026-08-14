@@ -9,6 +9,7 @@ import { z } from 'zod';
 export const walletServiceConfigSchema = baseConfigSchema
   .extend({
     SERVICE_PORT: z.coerce.number().int().positive().default(3002),
+    LEDGER_SERVICE_URL: z.string().default('http://localhost:3001'),
   })
   .merge(postgresConfigSchema);
 

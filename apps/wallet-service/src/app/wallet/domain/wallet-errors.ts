@@ -93,3 +93,10 @@ export class WalletError extends AtlasError {
     this.name = 'WalletError';
   }
 }
+
+/** Wrapped error from the Ledger service (e.g. account provisioning failed). */
+export class LedgerServiceError extends DomainError {
+  constructor(message: string) {
+    super('WALLET_LEDGER_ERROR', message);
+  }
+}

@@ -25,9 +25,8 @@ export const createTransferSchema = z.object({
   description: z.string().optional(),
   idempotencyKey: z.string().min(1),
   correlationId: z.string().optional(),
-  /** Ledger account ids for the debit/credit. */
-  sourceAccountId: z.string().min(1),
-  destinationAccountId: z.string().min(1),
+  // Ledger accounts are NOT caller-supplied — the saga resolves them from
+  // the source/destination wallets (per the per-wallet account model).
 });
 
 export type CreateTransferDto = z.infer<typeof createTransferSchema>;

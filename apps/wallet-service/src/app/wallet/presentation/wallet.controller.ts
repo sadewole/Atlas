@@ -57,41 +57,43 @@ export class WalletController {
     const parsed = createWalletSchema.safeParse(body);
     if (!parsed.success) return this.fail(body);
     const { wallet } = await this.createWalletUseCase.execute(parsed.data);
-    return {
-      data: {
-        id: wallet.id,
-        walletNumber: wallet.walletNumber,
-        ownerId: wallet.ownerId,
-        ownerType: wallet.ownerType,
-        type: wallet.type,
-        currency: wallet.currency,
-        status: wallet.status,
-        ledgerBalance: wallet.ledgerBalance,
-        reservedBalance: wallet.reservedBalance,
-        availableBalance: wallet.availableBalance,
-        version: wallet.version,
-      },
-    };
+    return { data: this.toWalletData(wallet) };
   }
 
   /** Read a wallet and its three balances (ledger, reserved, available). */
   @Get(':id')
   async getWallet(@Param('id') walletId: string) {
     const { wallet } = await this.getWalletUseCase.execute({ walletId });
+    return { data: this.toWalletData(wallet) };
+  }
+
+  private toWalletData(wallet: {
+    id: string;
+    walletNumber: string;
+    ownerId: string;
+    ownerType: string;
+    type: string;
+    currency: string;
+    status: string;
+    ledgerBalance: number;
+    reservedBalance: number;
+    availableBalance: number;
+    ledgerAccountId?: string;
+    version: number;
+  }) {
     return {
-      data: {
-        id: wallet.id,
-        walletNumber: wallet.walletNumber,
-        ownerId: wallet.ownerId,
-        ownerType: wallet.ownerType,
-        type: wallet.type,
-        currency: wallet.currency,
-        status: wallet.status,
-        ledgerBalance: wallet.ledgerBalance,
-        reservedBalance: wallet.reservedBalance,
-        availableBalance: wallet.availableBalance,
-        version: wallet.version,
-      },
+      id: wallet.id,
+      walletNumber: wallet.walletNumber,
+      ownerId: wallet.ownerId,
+      ownerType: wallet.ownerType,
+      type: wallet.type,
+      currency: wallet.currency,
+      status: wallet.status,
+      ledgerBalance: wallet.ledgerBalance,
+      reservedBalance: wallet.reservedBalance,
+      availableBalance: wallet.availableBalance,
+      ledgerAccountId: wallet.ledgerAccountId,
+      version: wallet.version,
     };
   }
 

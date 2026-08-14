@@ -3,6 +3,7 @@ import {
   TOPICS,
   type EventEnvelope,
 } from '@atlas/events';
+import { CONFIG } from '@atlas/config';
 import {
   Inject,
   Module,
@@ -14,8 +15,10 @@ import { GetWalletUseCase } from './application/get-wallet.use-case.js';
 import { JournalPostedConsumer } from './application/journal-posted.consumer.js';
 import { ReservationActionUseCase } from './application/reservation-action.use-case.js';
 import { ReserveFundsUseCase } from './application/reserve-funds.use-case.js';
+import { LedgerClient } from './infrastructure/ledger.client.js';
 import { WalletRepository } from './infrastructure/wallet-repository.js';
 import { WalletController } from './presentation/wallet.controller.js';
+import { WalletServiceConfig } from '../../config/wallet-service-config.js';
 
 /**
  * The wallet subscribes to `ledger.events` and syncs its balance projections
@@ -33,6 +36,12 @@ export const LEDGER_SUBSCRIBER = Symbol('LEDGER_SUBSCRIBER');
     ReservationActionUseCase,
     ChangeWalletStatusUseCase,
     JournalPostedConsumer,
+    {
+      provide: LedgerClient,
+      useFactory: (config: WalletServiceConfig) =>
+        new LedgerClient(config.LEDGER_SERVICE_URL),
+      inject: [CONFIG],
+    },
     {
       provide: LEDGER_SUBSCRIBER,
       useFactory: () =>
