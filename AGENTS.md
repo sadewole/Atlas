@@ -229,6 +229,8 @@ atlas/
 ### Ledger Account Model
 - **Per-wallet ledger accounts** — each wallet has a dedicated ledger account (`ledgerAccountId`), provisioned at wallet creation. NOT one shared account per wallet type. See `_learn/22-ledger-account-model.md` for the decision record.
 - The chart of accounts is the **classification hierarchy** (types/codes), not the full account set. Leaf accounts are provisioned per business entity.
+- **Two tiers of accounts**: (1) **system accounts** — bank, escrow, fees, refunds, retained earnings — are created ONCE when the chart of accounts is seeded and are never recreated per wallet/transaction (one `4100 Processing Fees` for the whole ledger); (2) **leaf accounts** — one per wallet, provisioned at wallet creation. See `_learn/23-ledger-two-tiers-and-money-flow.md` for the full model and worked money-flow examples.
+- **Wallets are liabilities, not vaults** — a wallet's ledger account records what the platform owes the owner; money physically lives in asset accounts (the bank). Money moves via balanced journals: transfers between wallets debit one liability and credit another without touching the bank. The wallet's `ledgerBalance` is a projection of its ledger account, synced via events — never a second store of money.
 - **Transfer resolves source/destination ledger accounts FROM the wallets**, never from client-supplied ids.
 - Wallet creation auto-provisions its ledger account; the wallet API exposes `ledgerAccountId`; the transfer DTO accepts only wallet ids (no `sourceAccountId`/`destinationAccountId`). Wallet numbers and ledger account codes are allocated atomically per currency via a `wallet_sequences` counter (account code format `{type-prefix}-{CURRENCY}-{sequence}`, e.g. `2100-NGN-19`).
 

@@ -56,6 +56,7 @@ The ledger spec literally shows `Samuel Wallet Liability` and `John Wallet Liabi
 - The **chart of accounts remains** as the classification hierarchy — it defines the types (asset/liability/etc.), codes, and place in the accounting equation that every wallet account is provisioned under. It's the schema, not the full account set.
 - **Wallet creation auto-provisions** its ledger account (calls the Ledger, stores the returned `ledgerAccountId`) — no caller-supplied id.
 - **Transfer reads accounts off the wallets** — the client no longer passes `sourceAccountId`/`destinationAccountId`; the saga resolves them from the wallets it fetches.
+- **System accounts stay one-each**: bank, escrow, fees, refunds, earnings are created once and never per-entity. Only wallets provision leaves. See `23-ledger-two-tiers-and-money-flow.md` for the two-tier model and how money moves.
 
 ## The Code Changes (from this decision)
 
