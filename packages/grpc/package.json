@@ -22,6 +22,9 @@
     "name": "grpc"
   },
   "dependencies": {
+    "@atlas/protobuf": "workspace:*",
+    "@grpc/grpc-js": "^1.14.4",
+    "@grpc/proto-loader": "^0.8.1",
     "tslib": "^2.3.0"
   }
 }

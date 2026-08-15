@@ -9,7 +9,10 @@ import { z } from 'zod';
 export const walletServiceConfigSchema = baseConfigSchema
   .extend({
     SERVICE_PORT: z.coerce.number().int().positive().default(3002),
-    LEDGER_SERVICE_URL: z.string().default('http://localhost:3001'),
+    /** Internal gRPC endpoint of the Ledger Service. */
+    LEDGER_GRPC_URL: z.string().default('localhost:50051'),
+    /** Internal gRPC port for this service (REST stays external). */
+    GRPC_PORT: z.coerce.number().int().positive().default(50052),
   })
   .merge(postgresConfigSchema);
 

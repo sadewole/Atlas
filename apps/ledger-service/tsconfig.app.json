@@ -29,6 +29,12 @@
   ],
   "references": [
     {
+      "path": "../../packages/protobuf/tsconfig.lib.json"
+    },
+    {
+      "path": "../../packages/grpc/tsconfig.lib.json"
+    },
+    {
       "path": "../../packages/shared/tsconfig.lib.json"
     },
     {

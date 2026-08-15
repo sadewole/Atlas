@@ -6,11 +6,13 @@ try {
 }
 
 import { CONFIG } from '@atlas/config';
+import { WALLET_PROTO_PATH } from '@atlas/protobuf';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
+import { Transport, type MicroserviceOptions } from '@nestjs/microservices';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app/app.module.js';
 import { AtlasExceptionFilter } from './app/common/atlas-exception.filter.js';
@@ -27,10 +29,24 @@ async function bootstrap() {
   app.useLogger(app.get(PinoLogger));
   app.useGlobalFilters(new AtlasExceptionFilter());
   const logger = app.get(PinoLogger);
+
+  // Internal gRPC transport — service-to-service calls (REST stays external).
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.GRPC,
+    options: {
+      package: 'wallet.v1',
+      protoPath: WALLET_PROTO_PATH,
+      url: `0.0.0.0:${config.GRPC_PORT}`,
+      loader: { keepCase: true, longs: Number, defaults: true },
+    },
+  });
+
   logger.log(
     `🚀 WalletService running on: http://localhost:${config.SERVICE_PORT}/api`,
   );
+  logger.log(`🛰  Wallet gRPC running on: ${config.GRPC_PORT}`);
 
+  await app.startAllMicroservices();
   await app.listen(config.SERVICE_PORT, '0.0.0.0');
 }
 

@@ -26,13 +26,13 @@ import { EVENT_PUBLISHER } from './tokens.js';
     {
       provide: WalletClient,
       useFactory: (config: TransferServiceConfig) =>
-        new WalletClient(config.WALLET_SERVICE_URL),
+        new WalletClient(config.WALLET_GRPC_URL),
       inject: [CONFIG],
     },
     {
       provide: LedgerClient,
       useFactory: (config: TransferServiceConfig) =>
-        new LedgerClient(config.LEDGER_SERVICE_URL),
+        new LedgerClient(config.LEDGER_GRPC_URL),
       inject: [CONFIG],
     },
   ],

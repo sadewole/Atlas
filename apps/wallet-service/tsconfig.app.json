@@ -29,16 +29,22 @@
   ],
   "references": [
     {
+      "path": "../../packages/shared/tsconfig.lib.json"
+    },
+    {
+      "path": "../../packages/protobuf/tsconfig.lib.json"
+    },
+    {
+      "path": "../../packages/logger/tsconfig.lib.json"
+    },
+    {
+      "path": "../../packages/grpc/tsconfig.lib.json"
+    },
+    {
       "path": "../../packages/events/tsconfig.lib.json"
     },
     {
       "path": "../../packages/database/tsconfig.lib.json"
-    },
-    {
-      "path": "../../packages/shared/tsconfig.lib.json"
-    },
-    {
-      "path": "../../packages/logger/tsconfig.lib.json"
     },
     {
       "path": "../../packages/config/tsconfig.lib.json"

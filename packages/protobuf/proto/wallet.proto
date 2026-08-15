@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package wallet.v1;
+
+// Wallet Service — internal gRPC API.
+//
+// Used by the Transfer Service (Reserve, Capture, Release, GetWallet).
+// REST remains the external API; gRPC is the internal transport. All money is
+// in minor units (kobo/cents).
+service WalletService {
+  // Hold funds out of the available balance (no money moves yet).
+  rpc Reserve(ReserveRequest) returns (ReserveResponse);
+  // Permanently debit the reserved funds.
+  rpc Capture(CaptureRequest) returns (CaptureResponse);
+  // Return the reserved funds to available (hold lifted).
+  rpc Release(ReleaseRequest) returns (ReleaseResponse);
+  // Read a wallet and its balances.
+  rpc GetWallet(GetWalletRequest) returns (GetWalletResponse);
+}
+
+message ReserveRequest {
+  string wallet_id = 1;
+  string reference = 2;
+  int64 amount = 3; // minor units
+  string currency = 4;
+  string expires_at = 5;
+}
+
+message ReserveResponse {
+  string id = 1;
+  string wallet_id = 2;
+  string status = 3;
+  string expires_at = 4;
+}
+
+message CaptureRequest {
+  string reservation_id = 1;
+}
+
+message CaptureResponse {
+  string id = 1;
+  string status = 2;
+}
+
+message ReleaseRequest {
+  string reservation_id = 1;
+}
+
+message ReleaseResponse {
+  string id = 1;
+  string status = 2;
+}
+
+message GetWalletRequest {
+  string wallet_id = 1;
+}
+
+message GetWalletResponse {
+  string id = 1;
+  string wallet_number = 2;
+  string owner_id = 3;
+  string owner_type = 4;
+  string type = 5;
+  string currency = 6;
+  string status = 7;
+  int64 ledger_balance = 8;
+  int64 reserved_balance = 9;
+  int64 available_balance = 10;
+  string ledger_account_id = 11;
+}

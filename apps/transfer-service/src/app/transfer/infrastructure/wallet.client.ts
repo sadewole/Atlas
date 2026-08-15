@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { createGrpcClient, grpcCall, GRPC_STATUS } from '@atlas/grpc';
+import { WALLET_PROTO_PATH } from '@atlas/protobuf';
 import { WalletServiceError } from '../domain/index.js';
 
 export interface ReserveFundsResult {
@@ -16,15 +18,63 @@ export interface WalletBalance {
   ledgerAccountId?: string;
 }
 
+interface WalletServiceClient {
+  Reserve(request: {
+    wallet_id: string;
+    reference: string;
+    amount: number;
+    currency: string;
+    expires_at?: string;
+  }): Promise<{ id: string; wallet_id: string; status: string; expires_at: string }>;
+  Capture(request: { reservation_id: string }): Promise<{ id: string; status: string }>;
+  Release(request: { reservation_id: string }): Promise<{ id: string; status: string }>;
+  GetWallet(request: { wallet_id: string }): Promise<{
+    id: string;
+    wallet_number: string;
+    owner_id: string;
+    owner_type: string;
+    type: string;
+    currency: string;
+    status: string;
+    ledger_balance: number;
+    reserved_balance: number;
+    available_balance: number;
+    ledger_account_id: string;
+  }>;
+}
+
 /**
- * HTTP client for the Wallet Service.
+ * gRPC client for the Wallet Service.
  *
- * NOTE: this is the REST implementation. The plan is to swap this to gRPC as
- * the platform matures — consumers of this class shouldn't care which.
+ * Speaks to the wallet's internal gRPC API (`wallet.v1.WalletService`).
+ * REST is reserved for external consumers.
  */
 @Injectable()
 export class WalletClient {
-  constructor(private readonly baseUrl: string) {}
+  private readonly client: WalletServiceClient;
+  private readonly url: string;
+
+  constructor(url: string) {
+    this.url = url;
+    const stub = createGrpcClient({
+      protoPath: WALLET_PROTO_PATH,
+      packageName: 'wallet.v1',
+      serviceName: 'WalletService',
+      url,
+    });
+    const call = <Req, Res>(method: string, request: Req) =>
+      grpcCall<Req, Res>(stub, method, request);
+    this.client = {
+      Reserve: (request) =>
+        call('reserve', request),
+      Capture: (request) =>
+        call('capture', request),
+      Release: (request) =>
+        call('release', request),
+      GetWallet: (request) =>
+        call('getWallet', request),
+    };
+  }
 
   /** Reserve funds on a wallet. Returns the created reservation. */
   async reserve(
@@ -36,103 +86,68 @@ export class WalletClient {
       expiresAt?: string;
     },
   ): Promise<ReserveFundsResult> {
-    let res: Response;
     try {
-      res = await fetch(
-        `${this.baseUrl}/v1/wallets/${walletId}/reserve`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(input),
-        },
-      );
-    } catch {
-      throw new WalletServiceError(`Wallet service unreachable (${this.baseUrl})`);
+      const res = await this.client.Reserve({
+        wallet_id: walletId,
+        reference: input.reference,
+        amount: input.amount,
+        currency: input.currency,
+        expires_at: input.expiresAt,
+      });
+      return { reservationId: res.id, status: res.status };
+    } catch (err) {
+      throw this.toError('reserve', err);
     }
-    const body = (await res.json()) as {
-      data?: { id?: string; status?: string };
-      error?: { message?: string; code?: string };
-    };
-    if (!res.ok) {
-      throw new WalletServiceError(
-        body.error?.message ?? `Wallet reserve failed (${res.status})`,
-      );
-    }
-    return {
-      reservationId: body.data?.id ?? '',
-      status: body.data?.status ?? '',
-    };
   }
 
   /** Capture a reservation (permanently debit the reserved funds). */
   async capture(reservationId: string): Promise<void> {
-    let res: Response;
     try {
-      res = await fetch(
-        `${this.baseUrl}/v1/wallets/reservations/${reservationId}/capture`,
-        { method: 'POST' },
-      );
-    } catch {
-      throw new WalletServiceError(`Wallet service unreachable (${this.baseUrl})`);
-    }
-    if (!res.ok) {
-      const body = (await res.json()) as { error?: { message?: string } };
-      throw new WalletServiceError(
-        body.error?.message ?? `Wallet capture failed (${res.status})`,
-      );
+      await this.client.Capture({ reservation_id: reservationId });
+    } catch (err) {
+      throw this.toError('capture', err);
     }
   }
 
   /** Release a reservation (return funds to available). */
   async release(reservationId: string): Promise<void> {
-    let res: Response;
     try {
-      res = await fetch(
-        `${this.baseUrl}/v1/wallets/reservations/${reservationId}/release`,
-        { method: 'POST' },
-      );
-    } catch {
-      throw new WalletServiceError(`Wallet service unreachable (${this.baseUrl})`);
-    }
-    if (!res.ok) {
-      const body = (await res.json()) as { error?: { message?: string } };
-      throw new WalletServiceError(
-        body.error?.message ?? `Wallet release failed (${res.status})`,
-      );
+      await this.client.Release({ reservation_id: reservationId });
+    } catch (err) {
+      throw this.toError('release', err);
     }
   }
 
   /** Read a wallet's current balance and status. */
   async getWallet(walletId: string): Promise<WalletBalance> {
-    let res: Response;
     try {
-      res = await fetch(`${this.baseUrl}/v1/wallets/${walletId}`);
-    } catch {
-      throw new WalletServiceError(`Wallet service unreachable (${this.baseUrl})`);
-    }
-    const body = (await res.json()) as {
-      data?: {
-        id?: string;
-        ledgerBalance?: number;
-        reservedBalance?: number;
-        availableBalance?: number;
-        status?: string;
-        ledgerAccountId?: string;
+      const res = await this.client.GetWallet({ wallet_id: walletId });
+      return {
+        walletId: res.id ?? walletId,
+        ledgerBalance: res.ledger_balance ?? 0,
+        reservedBalance: res.reserved_balance ?? 0,
+        availableBalance: res.available_balance ?? 0,
+        status: res.status ?? '',
+        ledgerAccountId: res.ledger_account_id || undefined,
       };
-      error?: { message?: string };
-    };
-    if (!res.ok || !body.data) {
-      throw new WalletServiceError(
-        body.error?.message ?? `Wallet fetch failed (${res.status})`,
-      );
+    } catch (err) {
+      throw this.toError('getWallet', err);
     }
-    return {
-      walletId: body.data.id ?? walletId,
-      ledgerBalance: body.data.ledgerBalance ?? 0,
-      reservedBalance: body.data.reservedBalance ?? 0,
-      availableBalance: body.data.availableBalance ?? 0,
-      status: body.data.status ?? '',
-      ledgerAccountId: body.data.ledgerAccountId,
-    };
+  }
+
+  private toError(operation: string, err: unknown): WalletServiceError {
+    const message =
+      typeof err === 'object' && err !== null && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : `Wallet ${operation} failed`;
+    if (
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code: unknown }).code === GRPC_STATUS.UNAVAILABLE
+    ) {
+      return new WalletServiceError(`Wallet service unreachable (${this.url})`);
+    }
+    return new WalletServiceError(`Wallet ${operation} failed: ${message}`);
   }
 }

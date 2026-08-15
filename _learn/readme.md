@@ -36,6 +36,7 @@ This folder is your personal learning resource. Unlike the `docs/` folder (which
 | 21 | [Transfer Events](./21-transfer-events.md) | TransferCompleted/Failed via the outbox; the drizzle dual-copy fix |
 | 22 | [Ledger Account Model](./22-ledger-account-model.md) | Decision record: per-wallet ledger accounts vs shared — the production-grade call |
 | 23 | [Ledger Two Tiers & Money Flow](./23-ledger-two-tiers-and-money-flow.md) | System accounts vs per-wallet leaves, and how money moves (with worked journals) |
+| 24 | [Internal gRPC](./24-internal-grpc.md) | Swapping service-to-service REST for gRPC: proto contracts, NestJS transport, the gotchas |
 
 ## Architecture Specs (Reference)
 

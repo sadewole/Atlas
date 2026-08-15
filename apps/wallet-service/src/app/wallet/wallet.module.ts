@@ -18,6 +18,7 @@ import { ReserveFundsUseCase } from './application/reserve-funds.use-case.js';
 import { LedgerClient } from './infrastructure/ledger.client.js';
 import { WalletRepository } from './infrastructure/wallet-repository.js';
 import { WalletController } from './presentation/wallet.controller.js';
+import { WalletGrpcController } from './presentation/wallet-grpc.controller.js';
 import { WalletServiceConfig } from '../../config/wallet-service-config.js';
 
 /**
@@ -27,7 +28,7 @@ import { WalletServiceConfig } from '../../config/wallet-service-config.js';
 export const LEDGER_SUBSCRIBER = Symbol('LEDGER_SUBSCRIBER');
 
 @Module({
-  controllers: [WalletController],
+  controllers: [WalletController, WalletGrpcController],
   providers: [
     WalletRepository,
     CreateWalletUseCase,
@@ -39,7 +40,7 @@ export const LEDGER_SUBSCRIBER = Symbol('LEDGER_SUBSCRIBER');
     {
       provide: LedgerClient,
       useFactory: (config: WalletServiceConfig) =>
-        new LedgerClient(config.LEDGER_SERVICE_URL),
+        new LedgerClient(config.LEDGER_GRPC_URL),
       inject: [CONFIG],
     },
     {

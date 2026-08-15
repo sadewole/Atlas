@@ -8,10 +8,11 @@ import { SeedChartOfAccountsUseCase } from './application/seed-chart-of-accounts
 import { LedgerRepository } from './infrastructure/ledger-repository.js';
 import { OutboxRepository } from './infrastructure/outbox-repository.js';
 import { LedgerController } from './presentation/ledger.controller.js';
+import { LedgerGrpcController } from './presentation/ledger-grpc.controller.js';
 import { EVENT_PUBLISHER } from './tokens.js';
 
 @Module({
-  controllers: [LedgerController],
+  controllers: [LedgerController, LedgerGrpcController],
   providers: [
     LedgerRepository,
     OutboxRepository,
