@@ -35,6 +35,9 @@
       "path": "../../packages/protobuf/tsconfig.lib.json"
     },
     {
+      "path": "../../packages/observability/tsconfig.lib.json"
+    },
+    {
       "path": "../../packages/logger/tsconfig.lib.json"
     },
     {

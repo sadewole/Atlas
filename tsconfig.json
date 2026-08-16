@@ -44,6 +44,9 @@
     },
     {
       "path": "./apps/transfer-service"
+    },
+    {
+      "path": "./packages/observability"
     }
   ],
   "compilerOptions": {}

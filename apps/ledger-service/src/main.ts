@@ -6,6 +6,10 @@ try {
   // No .env file — fine when env vars are provided by the environment.
 }
 
+// MUST be the first import: initialises OpenTelemetry before any Nest module
+// (http, pino, postgres, grpc) loads, so instrumentation can patch them.
+import './telemetry.js';
+
 import { CONFIG } from '@atlas/config';
 import { LEDGER_PROTO_PATH } from '@atlas/protobuf';
 import { NestFactory } from '@nestjs/core';
@@ -46,6 +50,8 @@ async function bootstrap() {
   logger.log(
     `🛰  Ledger gRPC running on: ${config.LEDGER_GRPC_PORT}`,
   );
+
+  app.enableShutdownHooks();
 
   await app.startAllMicroservices();
   await app.listen(config.LEDGER_PORT, '0.0.0.0');

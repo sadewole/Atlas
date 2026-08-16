@@ -44,7 +44,10 @@
       "dependsOn": ["build"],
       "options": {
         "buildTarget": "wallet-service:build",
-        "runBuildTargetDependencies": false
+        "runBuildTargetDependencies": false,
+        "runtimeArgs": [
+          "--experimental-loader=@opentelemetry/instrumentation/hook.mjs"
+        ]
       }
     },
     "test": {

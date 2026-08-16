@@ -5,6 +5,10 @@ try {
   // No .env file — fine when env vars are provided by the environment.
 }
 
+// MUST be the first import: initialises OpenTelemetry before any Nest module
+// (http, pino, postgres, grpc) loads, so instrumentation can patch them.
+import './telemetry.js';
+
 import { CONFIG } from '@atlas/config';
 import { WALLET_PROTO_PATH } from '@atlas/protobuf';
 import { NestFactory } from '@nestjs/core';
