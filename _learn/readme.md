@@ -37,6 +37,7 @@ This folder is your personal learning resource. Unlike the `docs/` folder (which
 | 22 | [Ledger Account Model](./22-ledger-account-model.md) | Decision record: per-wallet ledger accounts vs shared — the production-grade call |
 | 23 | [Ledger Two Tiers & Money Flow](./23-ledger-two-tiers-and-money-flow.md) | System accounts vs per-wallet leaves, and how money moves (with worked journals) |
 | 24 | [Internal gRPC](./24-internal-grpc.md) | Swapping service-to-service REST for gRPC: proto contracts, NestJS transport, the gotchas |
+| 25 | [Understanding `.proto` Files](./25-proto-files.md) | What an IDL contract is, why RPCs take one Request/Response, and the load-bearing field numbers |
 
 ## Architecture Specs (Reference)
 

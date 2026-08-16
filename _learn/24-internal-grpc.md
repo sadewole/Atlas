@@ -1,6 +1,6 @@
 # 24 — Internal gRPC: The Service-to-Service Swap
 
-This document explains why and how we moved Atlas's internal service-to-service calls from REST to gRPC — the "gRPC swap."
+This document explains why and how we moved Atlas's internal service-to-service calls from REST to gRPC — the "gRPC swap." For a deep dive on what `.proto` files are and how a proto contract works, see `25-proto-files.md`.
 
 ## The Architecture Decision
 
