@@ -34,9 +34,11 @@ The event is written **atomically** with the business data. If the process crash
 
 | Piece | File | Role |
 |-------|------|------|
-| `outbox_events` table | `ledger-schema.ts` | `event_id` (unique), `event_type`, `payload` (full envelope JSON), `status` (pending/published), `attempts` |
+| `ledger_outbox_events` table | `ledger-schema.ts` | `event_id` (unique), `event_type`, `payload` (full envelope JSON), `status` (pending/published), `attempts` |
 | `OutboxRepository` | `outbox-repository.ts` | `insert` (inside a tx), `claimPending` (`FOR UPDATE SKIP LOCKED`), `markPublished`, `recordAttempt` |
 | `OutboxPublisher` | `outbox-publisher.ts` | Background worker: polls, publishes via the `EventPublisher`, marks published |
+
+> **Table names are namespaced per service.** The outbox table is `ledger_outbox_events` (ledger), `transfer_outbox_events` (transfer), and `wallet_outbox_events` (wallet) — NOT a shared `outbox_events`. In local dev all services share ONE Postgres database, so a common table name would make their publishers race to drain each other's events into the wrong topics. See the lesson at the bottom.
 
 ## How `postJournal` Changed
 
@@ -90,6 +92,8 @@ The full loop works across all three services.
 ## The Lesson
 
 > **Never publish a message you haven't made durable.** If an event matters, write it in the same transaction as the data that caused it, and let a worker deliver it. "Commit the data, then send the event" is a bug — the outbox closes the window between them.
+
+> **Namespace shared tables when services share a database.** In local dev all services connect to the SAME Postgres DB. If two services create a table with the same name (`outbox_events`), they collide: the ledger's publisher was literally publishing the wallet's `WalletCreated` events to `ledger.events`. The fix: name the table per service (`wallet_outbox_events`, ...). In production each service gets its own DB instance, so this only bites locally — but it bites hard, and it's invisible until you see an event in the wrong topic. This is why the outbox tables are namespaced even though each schema object still calls the variable `outboxEvents`.
 
 ## Testing
 

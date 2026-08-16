@@ -7,6 +7,8 @@ import {
   WalletNotFoundError,
 } from '../domain/index.js';
 import { WalletRepository } from '../infrastructure/wallet-repository.js';
+import { OutboxRepository } from '../infrastructure/outbox-repository.js';
+import { fundsReservedEnvelope } from './wallet-events.js';
 import { withWalletLock } from './with-wallet-lock.js';
 
 export interface ReserveFundsCommand {
@@ -34,7 +36,10 @@ export interface ReserveFundsResult {
  */
 @Injectable()
 export class ReserveFundsUseCase {
-  constructor(private readonly repository: WalletRepository) {}
+  constructor(
+    private readonly repository: WalletRepository,
+    private readonly outboxRepository: OutboxRepository,
+  ) {}
 
   async execute(command: ReserveFundsCommand): Promise<ReserveFundsResult> {
     // Idempotency: same reference → return the existing reservation.
@@ -80,6 +85,19 @@ export class ReserveFundsUseCase {
               ? new Date(reservation.expiresAt)
               : null,
           },
+          tx,
+        );
+
+        // FundsReserved is written to the outbox in the SAME transaction as
+        // the reservation, so it can never be lost.
+        const envelope = fundsReservedEnvelope(
+          reservation,
+          `wallet:${wallet.id}`,
+        );
+        await this.outboxRepository.insert(
+          envelope.eventId,
+          envelope.eventType,
+          envelope.payload,
           tx,
         );
 

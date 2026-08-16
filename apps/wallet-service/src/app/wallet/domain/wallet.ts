@@ -115,6 +115,11 @@ export class Wallet {
     return new Wallet({ ...this.props(), status: next });
   }
 
+  /** Attach the ledger account this wallet's balance projects from. */
+  withLedgerAccount(ledgerAccountId: string): Wallet {
+    return new Wallet({ ...this.props(), ledgerAccountId });
+  }
+
   /** Freeze: can receive, cannot spend. */
   freeze(): Wallet {
     return this.withStatus('FROZEN');

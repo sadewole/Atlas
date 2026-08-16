@@ -2,16 +2,20 @@ import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres, { Sql } from 'postgres';
-import { createEnvelope } from '@atlas/events';
+import { InMemoryEventBus, createEnvelope, type EventPublisher } from '@atlas/events';
 import { Currency, newId } from '@atlas/shared';
 import { Wallet } from '../domain/wallet.js';
 import { walletSchema } from './wallet-schema.js';
 import { WalletRepository } from './wallet-repository.js';
+import { OutboxRepository } from './outbox-repository.js';
 import { CreateWalletUseCase } from '../application/create-wallet.use-case.js';
 import { ReserveFundsUseCase } from '../application/reserve-funds.use-case.js';
 import { ReservationActionUseCase } from '../application/reservation-action.use-case.js';
+import { ChangeWalletStatusUseCase } from '../application/change-wallet-status.use-case.js';
 import { JournalPostedConsumer } from '../application/journal-posted.consumer.js';
+import { OutboxPublisher } from '../application/outbox-publisher.js';
 import { LedgerClient } from './ledger.client.js';
+import { TOPICS } from '@atlas/events';
 
 /**
  * Financial correctness integration tests against real PostgreSQL
@@ -45,11 +49,15 @@ jest.setTimeout(30_000);
 let container: StartedPostgreSqlContainer;
 let pool: Sql;
 let repo: WalletRepository;
+let outboxRepo: OutboxRepository;
 let createWallet: CreateWalletUseCase;
 let reserveFunds: ReserveFundsUseCase;
 let reservationAction: ReservationActionUseCase;
+let changeStatus: ChangeWalletStatusUseCase;
 let consumer: JournalPostedConsumer;
 let fakeLedger: FakeLedgerClient;
+let bus: InMemoryEventBus;
+let publisher: OutboxPublisher;
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('postgres:16-alpine').start();
@@ -64,11 +72,26 @@ beforeAll(async () => {
   const db = drizzle(pool, { schema: walletSchema });
   await migrate(db, { migrationsFolder: './migrations' });
   repo = new WalletRepository(db as never);
+  outboxRepo = new OutboxRepository(db as never);
   fakeLedger = new FakeLedgerClient();
-  createWallet = new CreateWalletUseCase(repo, fakeLedger);
-  reserveFunds = new ReserveFundsUseCase(repo);
-  reservationAction = new ReservationActionUseCase(repo);
+  createWallet = new CreateWalletUseCase(repo, fakeLedger, outboxRepo);
+  reserveFunds = new ReserveFundsUseCase(repo, outboxRepo);
+  reservationAction = new ReservationActionUseCase(repo, outboxRepo);
+  changeStatus = new ChangeWalletStatusUseCase(repo, outboxRepo);
   consumer = new JournalPostedConsumer(repo);
+});
+
+beforeEach(() => {
+  bus = new InMemoryEventBus(TOPICS.wallet);
+  publisher = new OutboxPublisher(
+    outboxRepo,
+    bus as unknown as EventPublisher,
+  ).setPollInterval(50);
+});
+
+afterEach(async () => {
+  // Drain any leftover outbox rows so they don't leak into the next test.
+  await publisher.drain();
 });
 
 afterAll(async () => {
@@ -299,5 +322,74 @@ describe('JournalPostedConsumer — ledger → wallet sync', () => {
 
     const synced = await repo.findWalletById(w.id);
     expect(synced?.ledgerBalance).toBe(25000); // not 50000
+  });
+});
+
+describe('Outbox — wallet events written atomically and drained', () => {
+  it('writes WalletCreated to the outbox on creation (not yet on the bus)', async () => {
+    await createWallet.execute({
+      ownerId: newId(),
+      ownerType: 'USER',
+      type: 'PERSONAL',
+      currency: 'NGN' as Currency,
+    });
+
+    // Event is in the outbox, not yet on the bus.
+    expect(bus.published).toHaveLength(0);
+
+    await publisher.drain();
+
+    const events = bus.eventsOfType('WalletCreated');
+    expect(events).toHaveLength(1);
+    expect(events[0].producer).toBe('wallet-service');
+    expect(events[0].data).toMatchObject({
+      ownerType: 'USER',
+      type: 'PERSONAL',
+      currency: 'NGN',
+    });
+  });
+
+  it('writes FundsReserved, ReservationCaptured, and ReservationReleased events', async () => {
+    const w = await activeWallet(100000);
+    const { reservation } = await reserveFunds.execute({
+      walletId: w.id,
+      reference: `ref-${newId()}`,
+      amount: 20000,
+      currency: 'NGN' as Currency,
+    });
+    await reservationAction.capture({ reservationId: reservation.id });
+
+    // Capture is terminal — the reservation can no longer be released.
+    await expect(
+      reservationAction.release({ reservationId: reservation.id }),
+    ).rejects.toThrow();
+
+    await publisher.drain();
+
+    const types = bus.published.map((e) => e.eventType);
+    expect(types).toContain('WalletCreated');
+    expect(types).toContain('FundsReserved');
+    expect(types).toContain('ReservationCaptured');
+
+    // No pending rows remain — everything was published.
+    expect(await outboxRepo.claimPending(10)).toHaveLength(0);
+  });
+
+  it('writes WalletStatusChanged when a wallet is frozen', async () => {
+    const w = await activeWallet();
+    await changeStatus.execute({
+      walletId: w.id,
+      nextStatus: 'FROZEN',
+    });
+
+    await publisher.drain();
+
+    const events = bus.eventsOfType('WalletStatusChanged');
+    expect(events).toHaveLength(1);
+    expect(events[0].data).toMatchObject({
+      walletId: w.id,
+      previousStatus: 'ACTIVE',
+      status: 'FROZEN',
+    });
   });
 });

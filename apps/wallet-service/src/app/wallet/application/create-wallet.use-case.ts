@@ -3,7 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Wallet, WalletType, OwnerType } from '../domain/index.js';
 import { formatWalletNumber } from '../domain/index.js';
 import { WalletRepository } from '../infrastructure/wallet-repository.js';
+import { OutboxRepository } from '../infrastructure/outbox-repository.js';
 import { LedgerClient } from '../infrastructure/ledger.client.js';
+import { walletCreatedEnvelope } from './wallet-events.js';
 
 export interface CreateWalletCommand {
   ownerId: string;
@@ -50,6 +52,7 @@ export class CreateWalletUseCase {
   constructor(
     private readonly repository: WalletRepository,
     private readonly ledgerClient: LedgerClient,
+    private readonly outboxRepository: OutboxRepository,
   ) {}
 
   async execute(command: CreateWalletCommand): Promise<CreateWalletResult> {
@@ -78,15 +81,36 @@ export class CreateWalletUseCase {
       currency: command.currency,
     });
 
-    await this.repository.insertWallet({
-      id: wallet.id,
-      walletNumber,
-      ownerId: wallet.ownerId,
-      ownerType: wallet.ownerType,
-      type: wallet.type,
-      currency: wallet.currency,
-      status: wallet.status,
-      ledgerAccountId,
+    const created = wallet.withLedgerAccount(ledgerAccountId);
+
+    // Build the event envelope BEFORE persisting so its eventId is written to
+    // the outbox atomically with the wallet row.
+    const envelope = walletCreatedEnvelope(
+      created,
+      `wallet:${created.id}`,
+    );
+
+    // Persist the wallet AND its WalletCreated outbox event atomically.
+    await this.repository.transaction(async (tx) => {
+      await this.repository.insertWallet(
+        {
+          id: created.id,
+          walletNumber,
+          ownerId: created.ownerId,
+          ownerType: created.ownerType,
+          type: created.type,
+          currency: created.currency,
+          status: created.status,
+          ledgerAccountId,
+        },
+        tx,
+      );
+      await this.outboxRepository.insert(
+        envelope.eventId,
+        envelope.eventType,
+        envelope.payload,
+        tx,
+      );
     });
 
     this.logger.log(
@@ -94,16 +118,7 @@ export class CreateWalletUseCase {
     );
 
     return {
-      wallet: new Wallet({
-        id: wallet.id,
-        walletNumber,
-        ownerId: wallet.ownerId,
-        ownerType: wallet.ownerType,
-        type: wallet.type,
-        currency: wallet.currency,
-        status: wallet.status,
-        ledgerAccountId,
-      }),
+      wallet: created,
     };
   }
 }

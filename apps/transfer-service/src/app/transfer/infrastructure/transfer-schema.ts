@@ -56,7 +56,7 @@ export const transferStatusHistory = pgTable('transfer_status_history', {
  * Pub/Sub by a background publisher. Guarantees no event is lost between the
  * DB commit and the publish.
  */
-export const outboxEvents = pgTable('outbox_events', {
+export const outboxEvents = pgTable('transfer_outbox_events', {
   id: uuid('id').primaryKey().defaultRandom(),
   /** The event's unique id — dedupes redeliveries. */
   eventId: uuid('event_id').notNull().unique(),

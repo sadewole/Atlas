@@ -6,6 +6,8 @@ import {
   WalletStatus,
 } from '../domain/index.js';
 import { WalletRepository } from '../infrastructure/wallet-repository.js';
+import { OutboxRepository } from '../infrastructure/outbox-repository.js';
+import { walletStatusChangedEnvelope } from './wallet-events.js';
 import { withWalletLock } from './with-wallet-lock.js';
 
 export interface ChangeWalletStatusCommand {
@@ -20,7 +22,10 @@ export interface ChangeWalletStatusResult {
 /** Freeze / unfreeze / suspend / close a wallet via the state machine. */
 @Injectable()
 export class ChangeWalletStatusUseCase {
-  constructor(private readonly repository: WalletRepository) {}
+  constructor(
+    private readonly repository: WalletRepository,
+    private readonly outboxRepository: OutboxRepository,
+  ) {}
 
   async execute(
     command: ChangeWalletStatusCommand,
@@ -30,15 +35,31 @@ export class ChangeWalletStatusUseCase {
     await withWalletLock(
       this.repository,
       command.walletId,
-      async (wallet: Wallet) => {
+      async (wallet: Wallet, tx) => {
         if (!wallet.canTransitionTo(command.nextStatus)) {
           throw new InvalidWalletTransitionError(
             wallet.status,
             command.nextStatus,
           );
         }
-        result = wallet.withStatus(command.nextStatus);
-        return result;
+        const next = wallet.withStatus(command.nextStatus);
+
+        // WalletStatusChanged is written to the outbox in the SAME transaction
+        // as the status change.
+        const envelope = walletStatusChangedEnvelope(
+          next,
+          wallet.status,
+          `wallet:${wallet.id}`,
+        );
+        await this.outboxRepository.insert(
+          envelope.eventId,
+          envelope.eventType,
+          envelope.payload,
+          tx,
+        );
+
+        result = next;
+        return next;
       },
     );
 

@@ -7,6 +7,8 @@ import {
   WalletNotFoundError,
 } from '../domain/index.js';
 import { WalletRepository } from '../infrastructure/wallet-repository.js';
+import { OutboxRepository } from '../infrastructure/outbox-repository.js';
+import { reservationTerminalEnvelope } from './wallet-events.js';
 import { withWalletLock } from './with-wallet-lock.js';
 
 export interface ReservationActionCommand {
@@ -27,31 +29,47 @@ export interface ReservationActionResult {
  */
 @Injectable()
 export class ReservationActionUseCase {
-  constructor(private readonly repository: WalletRepository) {}
+  constructor(
+    private readonly repository: WalletRepository,
+    private readonly outboxRepository: OutboxRepository,
+  ) {}
 
   async capture(command: ReservationActionCommand): Promise<ReservationActionResult> {
-    return this.transition(command, (res, wallet) => ({
-      reservation: res.capture(),
-      wallet: wallet.captureReservation(res.amount),
-    }));
+    return this.transition(
+      command,
+      'ReservationCaptured',
+      (res, wallet) => ({
+        reservation: res.capture(),
+        wallet: wallet.captureReservation(res.amount),
+      }),
+    );
   }
 
   async release(command: ReservationActionCommand): Promise<ReservationActionResult> {
-    return this.transition(command, (res, wallet) => ({
-      reservation: res.release(),
-      wallet: wallet.releaseReservation(res.amount),
-    }));
+    return this.transition(
+      command,
+      'ReservationReleased',
+      (res, wallet) => ({
+        reservation: res.release(),
+        wallet: wallet.releaseReservation(res.amount),
+      }),
+    );
   }
 
   async expire(command: ReservationActionCommand): Promise<ReservationActionResult> {
-    return this.transition(command, (res, wallet) => ({
-      reservation: res.expire(),
-      wallet: wallet.releaseReservation(res.amount),
-    }));
+    return this.transition(
+      command,
+      'ReservationExpired',
+      (res, wallet) => ({
+        reservation: res.expire(),
+        wallet: wallet.releaseReservation(res.amount),
+      }),
+    );
   }
 
   private async transition(
     command: ReservationActionCommand,
+    eventType: 'ReservationCaptured' | 'ReservationReleased' | 'ReservationExpired',
     apply: (res: Reservation, wallet: Wallet) => {
       reservation: Reservation;
       wallet: Wallet;
@@ -85,6 +103,21 @@ export class ReservationActionUseCase {
           next.status,
           tx,
         );
+
+        // The terminal reservation event is written to the outbox in the SAME
+        // transaction as the status change — never lost between commit + publish.
+        const envelope = reservationTerminalEnvelope(
+          eventType,
+          next,
+          `wallet:${wallet.id}`,
+        );
+        await this.outboxRepository.insert(
+          envelope.eventId,
+          envelope.eventType,
+          envelope.payload,
+          tx,
+        );
+
         updatedReservation = next;
         return nextWallet;
       },

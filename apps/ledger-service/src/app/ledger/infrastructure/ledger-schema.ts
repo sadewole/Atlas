@@ -87,7 +87,7 @@ export const balanceProjection = pgTable('balance_projection', {
  * A background publisher drains this to Pub/Sub, so an event is never lost
  * if the process crashes between the DB commit and the publish.
  */
-export const outboxEvents = pgTable('outbox_events', {
+export const outboxEvents = pgTable('ledger_outbox_events', {
   id: uuid('id').primaryKey().defaultRandom(),
   /** The event's unique id — dedupes redeliveries. */
   eventId: uuid('event_id').notNull().unique(),

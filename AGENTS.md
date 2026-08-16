@@ -60,7 +60,7 @@ The design phase is complete (all specs written, including Security Platform). P
 - IAM service
 
 ### Current State
-Phase 0 (Foundation) is complete: Nx monorepo, shared packages (`shared`, `config`, `logger`, `events`, `testing`, `database`), Docker Compose local infra, the gateway, and a GitHub Actions CI pipeline (typecheck/lint/test/build via `nx affected` + dependency/secret scanning). The Ledger Service (`apps/ledger-service`) implements double-entry accounting with an **outbox pattern** for reliable event publishing (financial-correctness tests: 16). The Wallet Service (`apps/wallet-service`) implements wallet lifecycle, reservations, and optimistic locking, with balance projections synced **event-driven** from the Ledger via Pub/Sub (tests: 36). The Transfer Service (`apps/transfer-service`) orchestrates money movement as a Saga with compensation, and publishes `TransferCompleted`/`TransferFailed` via its own outbox (tests: 16).
+Phase 0 (Foundation) is complete: Nx monorepo, shared packages (`shared`, `config`, `logger`, `events`, `testing`, `database`), Docker Compose local infra, the gateway, and a GitHub Actions CI pipeline (typecheck/lint/test/build via `nx affected` + dependency/secret scanning). The Ledger Service (`apps/ledger-service`) implements double-entry accounting with an **outbox pattern** for reliable event publishing (financial-correctness tests: 16). The Wallet Service (`apps/wallet-service`) implements wallet lifecycle, reservations, and optimistic locking, with balance projections synced **event-driven** from the Ledger via Pub/Sub, and publishes its own lifecycle events (`WalletCreated`, `FundsReserved`, `WalletStatusChanged`, reservation terminal events) to `wallet.events` via its own outbox (tests: 39). The Transfer Service (`apps/transfer-service`) orchestrates money movement as a Saga with compensation, and publishes `TransferCompleted`/`TransferFailed` via its own outbox (tests: 16).
 
 All apps are ESM (`"type": "module"`) and build with `tsc` (not webpack). A local Nx plugin (`tools/atlas`, generator `@atlas/atlas:service`) scaffolds new services with all conventions baked in. **When scaffolding a new service, always use the generator** (`pnpm nx g @atlas/atlas:service <name> --port=<port>`) — do not copy-paste an existing app.
 
@@ -97,7 +97,7 @@ All apps are ESM (`"type": "module"`) and build with `tsc` (not webpack). A loca
 - **Async:** Google Pub/Sub (event envelope with versioning)
 
 ### Key Technical Patterns
-- **Outbox Pattern:** Write business data + outbox event in same DB transaction. Background publisher sends to Pub/Sub.
+- **Outbox Pattern:** Write business data + outbox event in same DB transaction. Background publisher sends to Pub/Sub. Outbox tables are **namespaced per service** (`ledger_outbox_events`, `wallet_outbox_events`, `transfer_outbox_events`) because all services share one local DB — a common `outbox_events` name makes their publishers race each other.
 - **Saga (Orchestrated):** Transfer Service coordinates multi-step workflows with compensation on failure.
 - **CQRS:** Separate command models (ledger postings) from read models (balance projections, dashboards).
 - **Event Envelope:** Every event carries `eventId`, `eventType`, `eventVersion`, `occurredAt`, `correlationId`, `causationId`, `producer`, `tenantId`, `data`.

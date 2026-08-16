@@ -47,7 +47,7 @@ Same shape plus a `reason` (the error message that caused compensation).
 
 ## How It Works
 
-- **`outbox_events` table** in the transfer service (same schema as the ledger's)
+- **`transfer_outbox_events` table** in the transfer service (same schema as the ledger's; tables are namespaced per service — see `20-outbox-pattern.md`)
 - **`markTerminal`** in `TransferRepository`: updates the transfer status, records history, AND writes the outbox row — **all in one transaction**. The event is durable with the status.
 - **`OutboxPublisher`**: background worker that polls pending rows, publishes to Pub/Sub, marks published. Retries failures forever (never drops).
 - The transfer module ensures the `transfer.events` topic exists and starts the publisher at boot.

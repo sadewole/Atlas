@@ -15,6 +15,13 @@
       "when": 1786686890170,
       "tag": "0001_outgoing_meggan",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786841230415,
+      "tag": "0002_outbox_table_namespace",
+      "breakpoints": true
     }
   ]
 }
