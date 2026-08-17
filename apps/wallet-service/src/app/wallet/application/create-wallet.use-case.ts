@@ -1,4 +1,5 @@
 import { Currency, newId } from '@atlas/shared';
+import { getMeter } from '@atlas/observability';
 import { Injectable, Logger } from '@nestjs/common';
 import { Wallet, WalletType, OwnerType } from '../domain/index.js';
 import { formatWalletNumber } from '../domain/index.js';
@@ -48,6 +49,10 @@ const WALLET_ACCOUNT_TYPE = 'liability';
 @Injectable()
 export class CreateWalletUseCase {
   private readonly logger = new Logger(CreateWalletUseCase.name);
+  private readonly walletsCreated = getMeter('wallet-service').createCounter(
+    'wallet.wallets.created',
+    { description: 'Total wallets created' },
+  );
 
   constructor(
     private readonly repository: WalletRepository,
@@ -116,6 +121,7 @@ export class CreateWalletUseCase {
     this.logger.log(
       `Wallet ${walletNumber} created with ledger account ${accountCode}`,
     );
+    this.walletsCreated.add(1, { currency: command.currency, type: command.type });
 
     return {
       wallet: created,

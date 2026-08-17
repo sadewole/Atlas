@@ -1,4 +1,5 @@
 import { Currency, newId } from '@atlas/shared';
+import { getMeter } from '@atlas/observability';
 import { Injectable } from '@nestjs/common';
 import {
   Reservation,
@@ -36,6 +37,11 @@ export interface ReserveFundsResult {
  */
 @Injectable()
 export class ReserveFundsUseCase {
+  private readonly fundsReserved = getMeter('wallet-service').createCounter(
+    'wallet.funds.reserved',
+    { description: 'Total funds reserved (holds created)' },
+  );
+
   constructor(
     private readonly repository: WalletRepository,
     private readonly outboxRepository: OutboxRepository,
@@ -102,6 +108,7 @@ export class ReserveFundsUseCase {
         );
 
         created = reservation;
+        this.fundsReserved.add(1, { currency: command.currency });
         return updated;
       },
     );

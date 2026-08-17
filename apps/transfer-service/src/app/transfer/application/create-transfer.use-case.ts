@@ -1,5 +1,6 @@
 import { Currency, newId } from '@atlas/shared';
 import { createEnvelope } from '@atlas/events';
+import { getMeter } from '@atlas/observability';
 import { Injectable, Logger } from '@nestjs/common';
 import { Transfer, TransferType } from '../domain/index.js';
 import { TransferRepository } from '../infrastructure/transfer-repository.js';
@@ -43,6 +44,14 @@ const RESERVATION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 @Injectable()
 export class CreateTransferUseCase {
   private readonly logger = new Logger(CreateTransferUseCase.name);
+  private readonly transfersCompleted = getMeter('transfer-service').createCounter(
+    'transfer.transfers.completed',
+    { description: 'Total transfers completed successfully' },
+  );
+  private readonly transfersFailed = getMeter('transfer-service').createCounter(
+    'transfer.transfers.failed',
+    { description: 'Total transfers failed (after compensation)' },
+  );
 
   constructor(
     private readonly repository: TransferRepository,
@@ -157,6 +166,7 @@ export class CreateTransferUseCase {
       this.logger.log(
         `Transfer ${current.reference} completed (journal ${journalId})`,
       );
+      this.transfersCompleted.add(1, { currency: current.currency });
       return { transfer: completed, journalId };
     } catch (err) {
       // Compensate any reservation we made before failing.
@@ -212,6 +222,7 @@ export class CreateTransferUseCase {
       }),
       new Date(),
     );
+    this.transfersFailed.add(1, { currency: transfer.currency });
   }
 
   /** Build a terminal transfer event envelope (published via the outbox). */

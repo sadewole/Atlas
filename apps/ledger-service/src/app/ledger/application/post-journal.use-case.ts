@@ -1,5 +1,6 @@
 import { Currency, Money, newId } from '@atlas/shared';
 import { createEnvelope } from '@atlas/events';
+import { getMeter } from '@atlas/observability';
 import { Injectable, Logger } from '@nestjs/common';
 import { Account, Journal, Posting } from '../domain/index.js';
 import { LedgerRepository } from '../infrastructure/ledger-repository.js';
@@ -40,6 +41,10 @@ export interface PostJournalResult {
 @Injectable()
 export class PostJournalUseCase {
   private readonly logger = new Logger(PostJournalUseCase.name);
+  private readonly journalsPosted = getMeter('ledger-service').createCounter(
+    'ledger.journals.posted',
+    { description: 'Total journals posted successfully' },
+  );
 
   constructor(private readonly repository: LedgerRepository) {}
 
@@ -128,6 +133,8 @@ export class PostJournalUseCase {
         payload: JSON.stringify(envelope),
       },
     );
+
+    this.journalsPosted.add(1, { currency: command.currency });
 
     return { journalId: journal.id, reference: journal.reference };
   }

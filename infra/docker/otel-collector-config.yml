@@ -1,7 +1,9 @@
 # OpenTelemetry Collector configuration for local development.
 #
 # Services export OTLP to http://localhost:4318 (see .env). The collector
-# batches the telemetry and forwards traces to Jaeger for visualization.
+# batches the telemetry and forwards:
+#   - traces  → Jaeger (visualization at http://localhost:16686)
+#   - metrics → Prometheus (scraped at http://localhost:9090)
 
 receivers:
   otlp:
@@ -19,6 +21,8 @@ exporters:
     endpoint: jaeger:4317
     tls:
       insecure: true
+  prometheus:
+    endpoint: 0.0.0.0:8889
 
 service:
   pipelines:
@@ -26,3 +30,7 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [otlp/jaeger]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]

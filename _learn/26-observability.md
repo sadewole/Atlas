@@ -1,12 +1,13 @@
-# 26 — Observability: Distributed Traces & Log Correlation
+# 26 — Observability: Distributed Traces, Log Correlation & Metrics
 
-This document explains how we wired OpenTelemetry into the services so that traces flow to Jaeger and logs carry `traceId`/`spanId`. It's the "observability bootstrap" from Phase 0 that had been designed (in `docs/tier1/observability.md`) but never implemented.
+This document explains how we wired OpenTelemetry into the services so that traces flow to Jaeger, metrics flow to Prometheus, and logs carry `traceId`/`spanId`. It's the "observability bootstrap" from Phase 0 that had been designed (in `docs/tier1/observability.md`) but never implemented.
 
 ## What We Wired
 
 Every service now:
 
 - **Exports distributed traces** over OTLP HTTP to the OpenTelemetry collector (`localhost:4318`), which forwards them to **Jaeger** (`localhost:16686`).
+- **Exports metrics** (RED + business) over OTLP to the collector, which exposes them to **Prometheus** (`localhost:9090`) via its Prometheus exporter.
 - **Auto-instruments** HTTP, pino, postgres, gRPC, and NestJS core — no manual span creation for common operations. A single transfer produces one trace spanning transfer → wallet → ledger.
 - **Correlates logs to traces** — every pino log emitted inside an active span carries `traceId`, `spanId`, and `traceFlags`.
 
@@ -84,9 +85,48 @@ Two requirements for the loader to resolve from each app: `@opentelemetry/instru
 4. Clicking traceId → full request journey
 ```
 
+## Metrics: RED + Business
+
+Metrics were added as the second pillar (traces + logs were first). The pipeline:
+
+```text
+Atlas service ──OTLP HTTP──▶ otel-collector ──scrape──▶ Prometheus (:9090)
+   (metric reader,   :4318/v1/metrics    :8889          (query UI)
+    export every 5s)
+```
+
+### RED metrics (free)
+
+The http auto-instrumentation emits `http_server_request_duration_seconds` — a histogram tagged by `http_request_method`, `http_response_status_code`, and `job` (service). That gives you rate (count), errors (5xx statuses), and duration (P50/P95/P99 via histogram buckets) per endpoint per service.
+
+### Business metrics (hand-written)
+
+`@atlas/observability` exports `getMeter(name)`; each service creates counters in its use cases:
+
+| Metric | Service | Where |
+|--------|---------|-------|
+| `ledger.journals.posted` | ledger | `PostJournalUseCase` |
+| `wallet.wallets.created` (currency, type) | wallet | `CreateWalletUseCase` |
+| `wallet.funds.reserved` | wallet | `ReserveFundsUseCase` |
+| `transfer.transfers.completed` | transfer | `CreateTransferUseCase` |
+| `transfer.transfers.failed` | transfer | `CreateTransferUseCase` (in `compensate`) |
+
+The OTel metric exporter uses the `PeriodicExportingMetricReader` (every 5s), so there's up to a 5s delay before a counter appears in Prometheus. Prometheus scrapes the collector's Prometheus exporter on `:8889` every 5s.
+
+### The collector config
+
+`otel-collector-config.yml` gained a **metrics pipeline** with a `prometheus` exporter (endpoint `:8889`). `docker-compose.yml` gained a `prometheus` service that scrapes it. Restart those two containers after changing the config:
+
+```sh
+docker compose -f infra/docker/docker-compose.yml up -d --force-recreate otel-collector prometheus
+```
+
+Verify at `http://localhost:9090` (Prometheus query UI).
+
 ## What We Deliberately Skipped (for now)
 
-- **Metrics** (RED/USE) and **logs pipeline** — the collector config only has a *traces* pipeline. Adding metrics means a Prometheus exporter in the collector + a viewer. See the spec for the roadmap.
+- **Logs pipeline** — the collector only handles traces + metrics, not OTLP logs. pino logs stay local (already structured JSON + correlated to traces).
+- **Grafana dashboards** — metrics land in Prometheus but there's no dashboarding yet. A Grafana container + provisioning is the natural next step.
 - **Manual business spans** — e.g. naming the ledger post as its own named span. Auto-instrumentation covers the plumbing; business-level spans are a future refinement.
 
 ## Meta-Lesson
