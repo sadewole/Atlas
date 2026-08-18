@@ -1,0 +1,84 @@
+{
+  "uid": "atlas-business",
+  "title": "Atlas Business Metrics",
+  "tags": ["atlas", "business"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "title": "Transfers Completed (total)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "transfer_transfers_completed_total",
+          "legendFormat": "{{currency}}"
+        }
+      ]
+    },
+    {
+      "title": "Transfers Failed (total)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "transfer_transfers_failed_total",
+          "legendFormat": "{{currency}}"
+        }
+      ]
+    },
+    {
+      "title": "Wallets Created (total)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(wallet_wallets_created_total)",
+          "legendFormat": "total"
+        }
+      ]
+    },
+    {
+      "title": "Journals Posted (total)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(ledger_journals_posted_total)",
+          "legendFormat": "total"
+        }
+      ]
+    },
+    {
+      "title": "Transfers Completed (rate)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(transfer_transfers_completed_total[1m]))",
+          "legendFormat": "transfers/s"
+        }
+      ]
+    },
+    {
+      "title": "Funds Reserved (rate)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(wallet_funds_reserved_total[1m]))",
+          "legendFormat": "reserves/s"
+        }
+      ]
+    }
+  ]
+}

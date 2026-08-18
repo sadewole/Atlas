@@ -7,7 +7,7 @@ This document explains how we wired OpenTelemetry into the services so that trac
 Every service now:
 
 - **Exports distributed traces** over OTLP HTTP to the OpenTelemetry collector (`localhost:4318`), which forwards them to **Jaeger** (`localhost:16686`).
-- **Exports metrics** (RED + business) over OTLP to the collector, which exposes them to **Prometheus** (`localhost:9090`) via its Prometheus exporter.
+- **Exports metrics** (RED + business) over OTLP to the collector, which exposes them to **Prometheus** (`localhost:9090`) via its Prometheus exporter; **Grafana** (`localhost:3000`, admin/admin) visualizes them in provisioned RED + business dashboards.
 - **Auto-instruments** HTTP, pino, postgres, gRPC, and NestJS core — no manual span creation for common operations. A single transfer produces one trace spanning transfer → wallet → ledger.
 - **Correlates logs to traces** — every pino log emitted inside an active span carries `traceId`, `spanId`, and `traceFlags`.
 
@@ -123,10 +123,19 @@ docker compose -f infra/docker/docker-compose.yml up -d --force-recreate otel-co
 
 Verify at `http://localhost:9090` (Prometheus query UI).
 
+### Grafana dashboards
+
+Grafana runs at `http://localhost:3000` (admin/admin) with a provisioned Prometheus datasource and two dashboards under the **Atlas** folder:
+
+- **Atlas RED (Services)** — request rate, error rate (5xx), P50/P95/P99 latency, and per-endpoint rate, filterable by service. Uses the auto-instrumented `http_server_request_duration_seconds` histogram.
+- **Atlas Business Metrics** — transfers completed/failed, wallets created, journals posted, funds reserved (totals + rates).
+
+Provisioning lives in `infra/docker/grafana/`: `provisioning/datasources/` (Prometheus datasource), `provisioning/dashboards/` (file provider), and `dashboards/*.json` (the dashboard definitions). The provider reloads JSON from the mounted folder every 10s, so editing a dashboard file and refreshing Grafana picks it up without restarting.
+
 ## What We Deliberately Skipped (for now)
 
 - **Logs pipeline** — the collector only handles traces + metrics, not OTLP logs. pino logs stay local (already structured JSON + correlated to traces).
-- **Grafana dashboards** — metrics land in Prometheus but there's no dashboarding yet. A Grafana container + provisioning is the natural next step.
+- **Alerting** — Grafana can alert on the dashboards (e.g. error rate > 5%), but no alert rules are provisioned yet. See `docs/tier1/observability.md` for the alerting philosophy.
 - **Manual business spans** — e.g. naming the ledger post as its own named span. Auto-instrumentation covers the plumbing; business-level spans are a future refinement.
 
 ## Meta-Lesson

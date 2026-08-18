@@ -115,7 +115,25 @@ services:
     ports:
       - "9090:9090" # Prometheus UI (http://localhost:9090)
 
+  grafana:
+    image: grafana/grafana:11.5.0
+    container_name: atlas-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000" # Grafana UI (http://localhost:3000, admin/admin)
+
 volumes:
   postgres_data:
   redis_data:
   pubsub_data:
+  grafana_data:
