@@ -46,12 +46,12 @@ async function bootstrap() {
   });
 
   logger.log(
-    `🚀 WalletService running on: http://localhost:${config.SERVICE_PORT}/api`,
+    `🚀 WalletService running on: http://localhost:${config.WALLET_PORT}/api`,
   );
   logger.log(`🛰  Wallet gRPC running on: ${config.GRPC_PORT}`);
 
   await app.startAllMicroservices();
-  await app.listen(config.SERVICE_PORT, '0.0.0.0');
+  await app.listen(config.WALLET_PORT, '0.0.0.0');
 }
 
 bootstrap();

@@ -6,10 +6,14 @@
   "tags": ["scope:wallet", "type:app"],
   "targets": {
     "build": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/js:swc",
       "options": {
-        "command": "tsc --build tsconfig.app.json",
-        "cwd": "apps/wallet-service"
+        "main": "apps/wallet-service/src/main.ts",
+        "outputPath": "dist/apps/wallet-service",
+        "tsConfig": "apps/wallet-service/tsconfig.app.json",
+        "swcrc": ".swcrc",
+        "generatePackageJson": true,
+        "assets": ["apps/wallet-service/src/**/*.proto"]
       }
     },
     "prune-lockfile": {
@@ -17,8 +21,8 @@
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
       "outputs": [
-        "{workspaceRoot}/apps/wallet-service/dist/package.json",
-        "{workspaceRoot}/apps/wallet-service/dist/pnpm-lock.yaml"
+        "{workspaceRoot}/dist/apps/wallet-service/package.json",
+        "{workspaceRoot}/dist/apps/wallet-service/pnpm-lock.yaml"
       ],
       "options": {
         "buildTarget": "build"
@@ -27,7 +31,7 @@
     "copy-workspace-modules": {
       "dependsOn": ["build"],
       "cache": true,
-      "outputs": ["{workspaceRoot}/apps/wallet-service/dist/workspace_modules"],
+      "outputs": ["{workspaceRoot}/dist/apps/wallet-service/workspace_modules"],
       "executor": "@nx/js:copy-workspace-modules",
       "options": {
         "buildTarget": "build"

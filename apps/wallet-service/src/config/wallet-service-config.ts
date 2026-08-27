@@ -8,7 +8,7 @@ import { z } from 'zod';
  */
 export const walletServiceConfigSchema = baseConfigSchema
   .extend({
-    SERVICE_PORT: z.coerce.number().int().positive().default(3002),
+    WALLET_PORT: z.coerce.number().int().positive().default(3102),
     /** Internal gRPC endpoint of the Ledger Service. */
     LEDGER_GRPC_URL: z.string().default('localhost:50051'),
     /** Internal gRPC port for this service (REST stays external). */

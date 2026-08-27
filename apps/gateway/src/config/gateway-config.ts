@@ -6,7 +6,7 @@ import { baseConfigSchema } from '@atlas/config';
  * services with gateway-only settings.
  */
 export const gatewayConfigSchema = baseConfigSchema.extend({
-  GATEWAY_PORT: z.coerce.number().int().positive().default(3000),
+  GATEWAY_PORT: z.coerce.number().int().positive().default(3100),
   GATEWAY_GLOBAL_PREFIX: z.string().default('api'),
 });
 

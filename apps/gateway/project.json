@@ -9,10 +9,14 @@
   ],
   "targets": {
     "build": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/js:swc",
       "options": {
-        "command": "tsc --build tsconfig.app.json",
-        "cwd": "apps/gateway"
+        "main": "apps/gateway/src/main.ts",
+        "outputPath": "dist/apps/gateway",
+        "tsConfig": "apps/gateway/tsconfig.app.json",
+        "swcrc": ".swcrc",
+        "generatePackageJson": true,
+        "assets": ["apps/gateway/src/**/*.proto"]
       }
     },
     "prune-lockfile": {
@@ -22,8 +26,8 @@
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
       "outputs": [
-        "{workspaceRoot}/apps/gateway/dist/package.json",
-        "{workspaceRoot}/apps/gateway/dist/pnpm-lock.yaml"
+        "{workspaceRoot}/dist/apps/gateway/package.json",
+        "{workspaceRoot}/dist/apps/gateway/pnpm-lock.yaml"
       ],
       "options": {
         "buildTarget": "build"
@@ -35,7 +39,7 @@
       ],
       "cache": true,
       "outputs": [
-        "{workspaceRoot}/apps/gateway/dist/workspace_modules"
+        "{workspaceRoot}/dist/apps/gateway/workspace_modules"
       ],
       "executor": "@nx/js:copy-workspace-modules",
       "options": {
